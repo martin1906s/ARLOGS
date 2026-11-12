@@ -40,39 +40,44 @@ export function createCoastalEnvironmentTexture(renderer: THREE.WebGLRenderer): 
 
   const envScene = new THREE.Scene();
 
-  // Upper cool twilight sky + lower dark sea bounce
+  // Upper coastal twilight dome + deep sea bounce + horizon glow
   const skyDome = new THREE.Mesh(
     new THREE.SphereGeometry(20, 24, 16),
-    new THREE.MeshBasicMaterial({ color: 0x3b678f, side: THREE.BackSide })
+    new THREE.MeshBasicMaterial({ color: 0x3f6e99, side: THREE.BackSide })
   );
   envScene.add(skyDome);
 
   const seaHalf = new THREE.Mesh(
     new THREE.PlaneGeometry(40, 40),
-    new THREE.MeshBasicMaterial({ color: 0x0d2136, side: THREE.DoubleSide })
+    new THREE.MeshBasicMaterial({ color: 0x0b2036, side: THREE.DoubleSide })
   );
   seaHalf.rotation.x = -Math.PI / 2;
   seaHalf.position.y = -4;
   envScene.add(seaHalf);
 
-  // Bright warm sunset light card & cool sky fill panel for crisp specular highlights on metal
+  // Bright warm solar horizon card directly ahead (-Z) for glittering ocean sun path & metallic rims
   const warmPanel = new THREE.Mesh(
-    new THREE.PlaneGeometry(18, 6),
-    new THREE.MeshBasicMaterial({ color: 0xffd199, side: THREE.DoubleSide })
+    new THREE.PlaneGeometry(22, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffd7a1, side: THREE.DoubleSide })
   );
-  warmPanel.position.set(12, 5, -14);
+  warmPanel.position.set(2, 3.2, -16);
   warmPanel.lookAt(0, 0, 0);
   envScene.add(warmPanel);
 
+  // Soft zenith sky fill panel
   const coolPanel = new THREE.Mesh(
-    new THREE.PlaneGeometry(22, 10),
-    new THREE.MeshBasicMaterial({ color: 0xcbe5ff, side: THREE.DoubleSide })
+    new THREE.PlaneGeometry(24, 12),
+    new THREE.MeshBasicMaterial({ color: 0xd4e9ff, side: THREE.DoubleSide })
   );
-  coolPanel.position.set(-12, 10, 14);
+  coolPanel.position.set(-8, 12, 10);
   coolPanel.lookAt(0, 0, 0);
   envScene.add(coolPanel);
 
-  const rt = pmrem.fromScene(envScene, 0.04);
+  const rt = pmrem.fromScene(envScene, 0.035);
+  [skyDome, seaHalf, warmPanel, coolPanel].forEach(m => {
+    m.geometry.dispose();
+    (m.material as THREE.Material).dispose();
+  });
   pmrem.dispose();
   return rt.texture;
 }

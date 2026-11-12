@@ -396,6 +396,138 @@ export function createBridgeFacadeTexture(): THREE.CanvasTexture {
 }
 
 /**
+ * Seamless tangent-space ocean wave normal map generated from periodic directional swells.
+ * Produces crisp golden-hour sun sparkles and deep surface facets at 0 runtime CPU cost.
+ */
+export function createWaterNormalTexture(): THREE.CanvasTexture {
+  const key = 'waterNormal';
+  const cached = singleTexCache.get(key);
+  if (cached) {
+    const clone = cached.clone();
+    clone.needsUpdate = true;
+    return clone;
+  }
+
+  const S = 256;
+  const [c, ctx] = makeCanvas(S, S);
+  const img = ctx.createImageData(S, S);
+  const data = img.data;
+  const tau = Math.PI * 2;
+
+  const sampleHeight = (u: number, v: number): number => {
+    const a = u * tau;
+    const b = v * tau;
+    return (
+      Math.sin(a * 2 + b * 1) * 0.45 +
+      Math.sin(a * -3 + b * 2 + 0.8) * 0.32 +
+      Math.cos(a * 5 + b * 4 + 1.7) * 0.18 +
+      Math.sin(a * 7 - b * 6 + 2.4) * 0.11 +
+      Math.cos(a * 11 + b * 9 + 0.5) * 0.06
+    );
+  };
+
+  const eps = 1 / S;
+  const strength = 2.6;
+
+  for (let y = 0; y < S; y++) {
+    const v = y / S;
+    for (let x = 0; x < S; x++) {
+      const u = x / S;
+      const hL = sampleHeight(u - eps, v);
+      const hR = sampleHeight(u + eps, v);
+      const hD = sampleHeight(u, v - eps);
+      const hU = sampleHeight(u, v + eps);
+
+      const dx = (hL - hR) * strength;
+      const dy = (hD - hU) * strength;
+      const dz = 1.0;
+      const invLen = 1 / Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+      const p = (y * S + x) * 4;
+      data[p] = Math.round((dx * invLen * 0.5 + 0.5) * 255);
+      data[p + 1] = Math.round((dy * invLen * 0.5 + 0.5) * 255);
+      data[p + 2] = Math.round((dz * invLen * 0.5 + 0.5) * 255);
+      data[p + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  const normalTex = toTexture(c, false, 14, 14);
+  singleTexCache.set(key, normalTex);
+  const clone = normalTex.clone();
+  clone.needsUpdate = true;
+  return clone;
+}
+
+/**
+ * Soft multi-layered volumetric cumulus cloud puff texture (cached once).
+ */
+export function createCloudLayerTexture(): THREE.CanvasTexture {
+  const key = 'cloudPuff';
+  const cached = singleTexCache.get(key);
+  if (cached) return cached;
+
+  const W = 256;
+  const H = 128;
+  const [c, ctx] = makeCanvas(W, H);
+  ctx.clearRect(0, 0, W, H);
+
+  const puffs: [number, number, number, number, string][] = [
+    [128, 72, 74, 28, 'rgba(248, 226, 198, 0.36)'],
+    [76, 74, 48, 22, 'rgba(241, 212, 179, 0.32)'],
+    [180, 74, 50, 22, 'rgba(241, 212, 179, 0.30)'],
+    [110, 56, 44, 26, 'rgba(255, 248, 240, 0.48)'],
+    [152, 58, 42, 24, 'rgba(255, 246, 236, 0.44)'],
+    [82, 62, 32, 18, 'rgba(232, 241, 250, 0.38)'],
+    [176, 62, 34, 18, 'rgba(232, 241, 250, 0.36)']
+  ];
+
+  for (const [cx, cy, rx, ry, color] of puffs) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1, ry / rx);
+    const g = ctx.createRadialGradient(0, 0, rx * 0.1, 0, 0, rx);
+    g.addColorStop(0, color);
+    g.addColorStop(0.65, color.replace(/[\d.]+\)$/, '0.14)'));
+    g.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, rx, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  const tex = toTexture(c, true);
+  singleTexCache.set(key, tex);
+  return tex;
+}
+
+/**
+ * Soft seafoam collar texture around pier / shoreline.
+ */
+export function createWaterFoamTexture(): THREE.CanvasTexture {
+  const key = 'waterFoam';
+  const cached = singleTexCache.get(key);
+  if (cached) return cached;
+
+  const S = 256;
+  const [c, ctx] = makeCanvas(S, S);
+  ctx.clearRect(0, 0, S, S);
+
+  const grad = ctx.createRadialGradient(S / 2, S / 2, S * 0.25, S / 2, S / 2, S * 0.5);
+  grad.addColorStop(0, 'rgba(226, 243, 255, 0)');
+  grad.addColorStop(0.55, 'rgba(226, 243, 255, 0.32)');
+  grad.addColorStop(0.8, 'rgba(255, 255, 255, 0.16)');
+  grad.addColorStop(1, 'rgba(226, 243, 255, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, S, S);
+
+  const tex = toTexture(c, true);
+  singleTexCache.set(key, tex);
+  return tex;
+}
+
+/**
  * Seamless tiled water bump map using a single cached gradient stamp for instant startup.
  */
 export function createWaterBumpTexture(): THREE.CanvasTexture {
@@ -486,34 +618,84 @@ export function createPortPierTextures(): PbrTextureSet {
 }
 
 /**
- * Atmospheric coastal dusk sky gradient dome texture.
+ * Rich coastal twilight & golden-hour equirectangular sky dome texture.
+ * Horizon band aligns at v = 0.50 with solar bloom at u = 0.74 (-Z forward sea horizon).
  */
 export function createSkyDomeTexture(): THREE.CanvasTexture {
-  const key = 'skyDome';
+  const key = 'skyDomeV2';
   const cached = singleTexCache.get(key);
   if (cached) return cached;
 
-  const S = 512;
-  const [c, ctx] = makeCanvas(S, S);
-  const sky = ctx.createLinearGradient(0, 0, 0, S);
-  sky.addColorStop(0.0, '#0c1b2e');
-  sky.addColorStop(0.28, '#163252');
-  sky.addColorStop(0.46, '#275077');
-  sky.addColorStop(0.56, '#4f7c9e');
-  sky.addColorStop(0.63, '#b8946e');
-  sky.addColorStop(0.68, '#23425f');
-  sky.addColorStop(1.0, '#0a1829');
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, S, S);
+  const W = 1024;
+  const H = 512;
+  const [c, ctx] = makeCanvas(W, H);
 
-  const glow = ctx.createRadialGradient(256, 312, 10, 256, 312, 210);
-  glow.addColorStop(0, 'rgba(245, 194, 128, 0.42)');
-  glow.addColorStop(0.45, 'rgba(125, 168, 204, 0.18)');
-  glow.addColorStop(1, 'rgba(12, 27, 46, 0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 100, S, 325);
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0.0, '#071324');
+  sky.addColorStop(0.18, '#0f2847');
+  sky.addColorStop(0.32, '#1d4975');
+  sky.addColorStop(0.42, '#3a729e');
+  sky.addColorStop(0.475, '#89a7bd');
+  sky.addColorStop(0.505, '#ebb273');
+  sky.addColorStop(0.54, '#c77d56');
+  sky.addColorStop(0.59, '#244769');
+  sky.addColorStop(0.75, '#0e253e');
+  sky.addColorStop(1.0, '#071422');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H);
+
+  // Warm solar horizon bloom centered ahead (-Z => u ~ 0.74)
+  const sunX = W * 0.74;
+  const sunY = H * 0.478;
+  const corona = ctx.createRadialGradient(sunX, sunY, 6, sunX, sunY, 320);
+  corona.addColorStop(0.0, 'rgba(255, 247, 224, 0.92)');
+  corona.addColorStop(0.08, 'rgba(255, 214, 150, 0.68)');
+  corona.addColorStop(0.28, 'rgba(235, 146, 84, 0.34)');
+  corona.addColorStop(0.65, 'rgba(110, 145, 185, 0.10)');
+  corona.addColorStop(1.0, 'rgba(15, 40, 71, 0)');
+  ctx.fillStyle = corona;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle high-altitude twilight stars near upper zenith
+  for (let i = 0; i < 65; i++) {
+    const sx = (i * 157 + 43) % W;
+    const sy = 12 + ((i * 71) % 115);
+    const alpha = 0.18 + (i % 4) * 0.12;
+    const r = i % 5 === 0 ? 1.3 : 0.85;
+    ctx.fillStyle = `rgba(226, 240, 255, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Painted sunlit cirrus & cumulus cloud streaks across mid-horizon sky
+  for (let i = 0; i < 24; i++) {
+    const cx = ((i * 139 + 620) % (W - 120)) + 60;
+    const cy = 120 + ((i * 37) % 118);
+    const rw = 55 + (i % 5) * 26;
+    const rh = 10 + (i % 4) * 5;
+    const distFromSun = Math.abs(cx - sunX) / W;
+    const warmMix = Math.max(0, 1 - distFromSun * 3.2);
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1, rh / rw);
+    const cg = ctx.createRadialGradient(0, 0, rw * 0.08, 0, 0, rw);
+    const rCol = Math.round(180 + warmMix * 75);
+    const gCol = Math.round(196 + warmMix * 32);
+    const bCol = Math.round(220 - warmMix * 38);
+    cg.addColorStop(0, `rgba(${rCol}, ${gCol}, ${bCol}, ${0.22 + warmMix * 0.18})`);
+    cg.addColorStop(0.55, `rgba(${rCol - 28}, ${gCol - 20}, ${bCol - 8}, 0.11)`);
+    cg.addColorStop(1, 'rgba(29, 73, 117, 0)');
+    ctx.fillStyle = cg;
+    ctx.beginPath();
+    ctx.arc(0, 0, rw, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
   const skyTex = toTexture(c, true);
+  skyTex.wrapS = THREE.RepeatWrapping;
   singleTexCache.set(key, skyTex);
   return skyTex;
 }

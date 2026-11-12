@@ -17,7 +17,9 @@ import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { ScreenId, UserRole } from '../../models/shipment.model';
 import {
-  createWaterBumpTexture,
+  createWaterNormalTexture,
+  createCloudLayerTexture,
+  createWaterFoamTexture,
   createPortPierTextures,
   createSkyDomeTexture
 } from '../../utils/procedural-textures';
@@ -194,7 +196,7 @@ type LoginAnimPhase =
       min-height: 100dvh;
       overflow-x: hidden;
       overflow-y: auto;
-      background: linear-gradient(180deg, #10253f 0%, #1d4065 48%, #5e748b 68%, #10263b 100%);
+      background: linear-gradient(180deg, #09172b 0%, #1d4975 40%, #86a3b8 58%, #e3a76b 65%, #122d48 76%, #08182a 100%);
       transition: opacity 0.55s ease, transform 0.65s ease;
     }
 
@@ -434,9 +436,12 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
 
   private oceanMesh!: THREE.Mesh;
   private oceanArray!: Float32Array;
+  private oceanColors!: Float32Array;
   private oceanVertexCount = 0;
   private oceanFrameSkip = false;
-  private waterBumpTex!: THREE.CanvasTexture;
+  private waterNormalTex!: THREE.CanvasTexture;
+  private pierFoam!: THREE.Mesh;
+  private cloudLayers: { mesh: THREE.Mesh; speed: number; baseY: number; phase: number }[] = [];
   private rippleRings: { mesh: THREE.Mesh; age: number }[] = [];
 
   private lastTimestamp = 0;
@@ -783,9 +788,9 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
 
   private initScene(w: number, h: number): void {
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x284b6b, 0.008);
+    this.scene.fog = new THREE.FogExp2(0x3f678e, 0.0052);
 
-    this.camera = new THREE.PerspectiveCamera(42, w / Math.max(1, h), 0.2, 260);
+    this.camera = new THREE.PerspectiveCamera(42, w / Math.max(1, h), 0.2, 280);
     this.camera.position.set(0, 3.2, 25);
     this.camera.lookAt(0, 0.4, 0);
 
@@ -796,55 +801,140 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
       powerPreference: 'high-performance'
     });
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.toneMappingExposure = 1.18;
     this.renderer.shadowMap.enabled = false;
     this.canvasHost.nativeElement.appendChild(this.renderer.domElement);
 
-    // Coastal dusk PBR environment map for real metal & glass reflections
+    // Coastal golden-hour PBR environment map for glossy sea, hull & glass reflections
     this.scene.environment = createCoastalEnvironmentTexture(this.renderer);
 
-    const hemi = new THREE.HemisphereLight(0xcbe2f7, 0x162a40, 1.2);
+    const hemi = new THREE.HemisphereLight(0xd6ebff, 0x10273f, 1.15);
     this.scene.add(hemi);
 
-    const sunKey = new THREE.DirectionalLight(0xffdfb8, 2.35);
-    sunKey.position.set(16, 24, 18);
-    this.scene.add(sunKey);
+    // Front-top fill keeps aircraft & container doors crisply lit
+    const keyLight = new THREE.DirectionalLight(0xfff0dd, 1.85);
+    keyLight.position.set(14, 22, 20);
+    this.scene.add(keyLight);
 
-    const rimWarm = new THREE.DirectionalLight(0xffbe7b, 1.4);
-    rimWarm.position.set(-18, 12, -24);
-    this.scene.add(rimWarm);
+    // Low golden sunset key over the sea horizon casts a realistic shimmering sun path across waves
+    const horizonSun = new THREE.DirectionalLight(0xffb86c, 2.25);
+    horizonSun.position.set(5, 9, -68);
+    this.scene.add(horizonSun);
   }
 
   private buildSkyAndOcean(w: number): void {
     const skyTex = createSkyDomeTexture();
     const skyDome = new THREE.Mesh(
-      new THREE.SphereGeometry(165, 32, 22),
+      new THREE.SphereGeometry(175, 36, 24),
       new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false })
     );
     this.scene.add(skyDome);
 
-    this.waterBumpTex = createWaterBumpTexture();
-    // Adaptive mesh density cuts CPU wave overhead by 2x-4.5x while preserving fluid water look
-    const segX = w < 768 ? 44 : 72;
-    const segZ = w < 768 ? 32 : 48;
-    const oceanGeo = new THREE.PlaneGeometry(260, 190, segX, segZ);
+    // Glowing solar disc + soft atmospheric halo on the distant ocean horizon
+    const sunDisc = new THREE.Mesh(
+      new THREE.CircleGeometry(4.2, 28),
+      new THREE.MeshBasicMaterial({ color: 0xfff3d6, transparent: true, opacity: 0.92, fog: false, depthWrite: false })
+    );
+    sunDisc.position.set(6, 7.2, -148);
+    this.scene.add(sunDisc);
+
+    const sunHalo = new THREE.Mesh(
+      new THREE.CircleGeometry(14, 28),
+      new THREE.MeshBasicMaterial({ color: 0xffba73, transparent: true, opacity: 0.24, fog: false, depthWrite: false })
+    );
+    sunHalo.position.set(6, 7.2, -149);
+    this.scene.add(sunHalo);
+
+    // Distant coastal headland silhouette along far horizon
+    const ridgeGeo = new THREE.PlaneGeometry(310, 7.5, 24, 1);
+    const ridgePos = ridgeGeo.attributes['position'] as THREE.BufferAttribute;
+    for (let i = 0; i < ridgePos.count; i++) {
+      const rx = ridgePos.getX(i);
+      const ry = ridgePos.getY(i);
+      if (ry > 0) {
+        const hill = Math.max(0, Math.sin(rx * 0.045 + 0.8) * 2.4 + Math.cos(rx * 0.11) * 1.1);
+        ridgePos.setY(i, ry * 0.45 + hill);
+      }
+    }
+    const coastalRidge = new THREE.Mesh(
+      ridgeGeo,
+      new THREE.MeshBasicMaterial({ color: 0x1b3754, transparent: true, opacity: 0.55, fog: true, depthWrite: false })
+    );
+    coastalRidge.position.set(0, -3.5, -134);
+    this.scene.add(coastalRidge);
+
+    // Drifting multi-depth soft cumulus clouds
+    const cloudTex = createCloudLayerTexture();
+    const cloudConfigs: [number, number, number, number, number, number][] = [
+      [-68, 22, -96, 44, 13, 0.45],
+      [-26, 26, -108, 52, 15, 0.35],
+      [22, 20, -92, 48, 14, 0.52],
+      [74, 24, -104, 46, 13, 0.40],
+      [-48, 14, -118, 38, 10, 0.28],
+      [48, 15, -122, 42, 11, 0.32],
+      [0, 31, -86, 56, 16, 0.26]
+    ];
+    this.cloudLayers = cloudConfigs.map(([cx, cy, cz, cw, ch, speed], idx) => {
+      const mat = new THREE.MeshBasicMaterial({
+        map: cloudTex,
+        transparent: true,
+        opacity: 0.72,
+        depthWrite: false,
+        fog: true
+      });
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(cw, ch), mat);
+      mesh.position.set(cx, cy, cz);
+      this.scene.add(mesh);
+      return { mesh, speed, baseY: cy, phase: idx * 1.1 };
+    });
+
+    // High-contrast seamless normal map for realistic capillary wave sparkles
+    this.waterNormalTex = createWaterNormalTexture();
+    const segX = w < 768 ? 48 : 80;
+    const segZ = w < 768 ? 36 : 56;
+    const oceanGeo = new THREE.PlaneGeometry(290, 210, segX, segZ);
     oceanGeo.rotateX(-Math.PI / 2);
 
     const posAttr = oceanGeo.attributes['position'] as THREE.BufferAttribute;
     this.oceanArray = posAttr.array as Float32Array;
     this.oceanVertexCount = posAttr.count;
 
+    // Pre-allocate vertex color buffer for deep pelagic troughs -> luminous turquoise wave crests
+    this.oceanColors = new Float32Array(this.oceanVertexCount * 3);
+    for (let i = 0; i < this.oceanVertexCount; i++) {
+      this.oceanColors[i * 3] = 0.05;
+      this.oceanColors[i * 3 + 1] = 0.24;
+      this.oceanColors[i * 3 + 2] = 0.38;
+    }
+    oceanGeo.setAttribute('color', new THREE.BufferAttribute(this.oceanColors, 3));
+
     const oceanMat = new THREE.MeshStandardMaterial({
-      color: 0x123857,
-      metalness: 0.78,
-      roughness: 0.18,
-      bumpMap: this.waterBumpTex,
-      bumpScale: 0.45,
-      envMapIntensity: 1.4
+      color: 0xffffff,
+      vertexColors: true,
+      metalness: 0.86,
+      roughness: 0.09,
+      normalMap: this.waterNormalTex,
+      normalScale: new THREE.Vector2(0.85, 0.85),
+      envMapIntensity: 1.9
     });
     this.oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
-    this.oceanMesh.position.set(0, -5.8, -28);
+    this.oceanMesh.position.set(0, -5.8, -34);
     this.scene.add(this.oceanMesh);
+
+    // Soft seafoam ring where ocean meets concrete pier
+    const foamTex = createWaterFoamTexture();
+    this.pierFoam = new THREE.Mesh(
+      new THREE.PlaneGeometry(16.8, 17.6),
+      new THREE.MeshBasicMaterial({
+        map: foamTex,
+        transparent: true,
+        opacity: 0.48,
+        depthWrite: false
+      })
+    );
+    this.pierFoam.rotation.x = -Math.PI / 2;
+    this.pierFoam.position.set(0, -5.42, 3.2);
+    this.scene.add(this.pierFoam);
   }
 
   private buildTexturedPier(): void {
@@ -974,26 +1064,46 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
     this.camera.position.y += (targetCamY - this.camera.position.y) * 0.05;
     this.camera.lookAt(0, 0.35, 0);
 
-    // Specular water drift & zero-overhead Float32Array ocean swells
-    if (this.waterBumpTex) {
-      this.waterBumpTex.offset.x += dt * 0.028;
-      this.waterBumpTex.offset.y += dt * 0.018;
+    // Specular water drift, volumetric clouds, pier seafoam & crest-shaded swells
+    if (this.waterNormalTex) {
+      this.waterNormalTex.offset.x += dt * 0.022;
+      this.waterNormalTex.offset.y += dt * 0.015;
     }
-    if (this.oceanArray) {
+    if (this.pierFoam) {
+      const pulse = 1 + Math.sin(t * 1.45) * 0.025;
+      this.pierFoam.scale.set(pulse, pulse, 1);
+      (this.pierFoam.material as THREE.MeshBasicMaterial).opacity = 0.36 + Math.sin(t * 1.45) * 0.12;
+    }
+    for (const cl of this.cloudLayers) {
+      cl.mesh.position.x += dt * cl.speed;
+      if (cl.mesh.position.x > 115) cl.mesh.position.x = -115;
+      cl.mesh.position.y = cl.baseY + Math.sin(t * 0.25 + cl.phase) * 0.35;
+    }
+    if (this.oceanArray && this.oceanColors) {
       this.oceanFrameSkip = !this.oceanFrameSkip;
       if (!this.isCompactViewport || this.oceanFrameSkip) {
         const arr = this.oceanArray;
+        const cols = this.oceanColors;
         const count = this.oceanVertexCount;
         for (let i = 0; i < count; i++) {
           const idx = i * 3;
           const vx = arr[idx];
           const vz = arr[idx + 2];
-          arr[idx + 1] =
-            Math.sin(vx * 0.14 + t * 1.25) * 0.28 +
-            Math.cos(vz * 0.16 + t * 1.05) * 0.24 +
-            Math.sin((vx + vz) * 0.08 + t * 0.8) * 0.18;
+          const wy =
+            Math.sin(vx * 0.12 + t * 1.2) * 0.28 +
+            Math.cos(vz * 0.15 + t * 0.98) * 0.24 +
+            Math.sin((vx * 0.07 - vz * 0.09) + t * 0.78) * 0.18;
+          arr[idx + 1] = wy;
+
+          // Normalize wave height (-0.70..+0.70) into deep navy trough -> turquoise crest
+          const k = Math.max(0, Math.min(1, (wy + 0.65) / 1.3));
+          const foam = k > 0.86 ? (k - 0.86) * 1.6 : 0;
+          cols[idx] = 0.03 + k * 0.09 + foam * 0.35;
+          cols[idx + 1] = 0.14 + k * 0.26 + foam * 0.36;
+          cols[idx + 2] = 0.26 + k * 0.30 + foam * 0.32;
         }
         (this.oceanMesh.geometry.attributes['position'] as THREE.BufferAttribute).needsUpdate = true;
+        (this.oceanMesh.geometry.attributes['color'] as THREE.BufferAttribute).needsUpdate = true;
       }
     }
 
