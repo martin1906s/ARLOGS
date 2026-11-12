@@ -1,6 +1,5 @@
 import { Injectable, signal } from '@angular/core';
 import { AuditCategory, AuditEntry, UserRole } from '../models/shipment.model';
-import * as XLSX from 'xlsx';
 
 @Injectable({
   providedIn: 'root'
@@ -86,7 +85,7 @@ export class AuditService {
     this.logs.update(list => [newEntry, ...list]);
   }
 
-  exportAuditExcel(entries: AuditEntry[]): void {
+  async exportAuditExcel(entries: AuditEntry[]): Promise<void> {
     const rows = entries.map(e => ({
       'ID Evento': e.id,
       'Fecha y Hora': e.timestamp,
@@ -98,6 +97,7 @@ export class AuditService {
       'Acción': e.accion,
       'Detalle del Cambio': e.detalle
     }));
+    const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Auditoria ARLOGS');

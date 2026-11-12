@@ -4,21 +4,64 @@ import { FormsModule } from '@angular/forms';
 import { ShipmentService } from '../../services/shipment.service';
 import { AuditService } from '../../services/audit.service';
 import { ToastService } from '../../services/toast.service';
-import { Cargo3dAnimationComponent } from '../cargo3d-animation/cargo3d-animation.component';
 
 @Component({
   selector: 'app-executive-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, Cargo3dAnimationComponent],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="executive-dashboard py-2">
       
-      <!-- Top Hero Section: 3D Visualization & Operational Threshold -->
+      <!-- Top Hero Section: Modality Overview & Operational Threshold (Zero 3D) -->
       <div class="row g-3 mb-3">
         
-        <!-- Ambient 3D Global Network -->
+        <!-- Fast Modality Distribution Card -->
         <div class="col-12 col-xl-8">
-          <app-cargo3d-animation></app-cargo3d-animation>
+          <div class="card-executive p-3 h-100 d-flex flex-column justify-content-between">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 border-bottom pb-2">
+              <div>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="fs-xs fw-semibold text-muted text-uppercase letter-spacing-wide">
+                    Panel Ejecutivo ARLOGS
+                  </span>
+                  <span class="badge bg-emerald-50 text-emerald-800 border border-emerald-200 fs-xxs">
+                    En tiempo real
+                  </span>
+                </div>
+                <h6 class="fw-bold mb-0 text-dark mt-1">Distribución Operativa por Modalidad</h6>
+              </div>
+              <span class="badge bg-slate-100 text-slate-700 border border-slate-200 mono-font fs-xxs">
+                {{ stats().total }} embarques registrados
+              </span>
+            </div>
+
+            <div class="row g-2 my-auto">
+              @for (item of modalitySummary(); track item.label) {
+                <div class="col-6 col-sm-4">
+                  <div class="p-2 px-3 rounded-3 bg-slate-50 border border-slate-200 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                      <span class="fs-xs fw-semibold text-dark d-flex align-items-center gap-1">
+                        <i class="bi {{ item.icon }} text-primary"></i>{{ item.label }}
+                      </span>
+                      <span class="badge bg-white text-dark border border-slate-200 mono-font fs-xs">{{ item.count }}</span>
+                    </div>
+                    <div class="progress mb-1" style="height: 4px;">
+                      <div class="progress-bar" [ngClass]="item.barClass" [style.width.%]="item.pct"></div>
+                    </div>
+                    <div class="fs-xxs text-muted d-flex justify-content-between">
+                      <span>Participación</span>
+                      <span class="mono-font fw-semibold">{{ item.pct }}%</span>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <div class="pt-2 mt-3 border-top border-slate-100 d-flex align-items-center justify-content-between flex-wrap gap-2 fs-xxs text-muted">
+              <span><i class="bi bi-geo-alt-fill text-primary me-1"></i>Hub Principal: Guayaquil (GYE) &bull; Cobertura Asia / Europa / América</span>
+              <span class="mono-font fw-semibold text-dark">Ciclo promedio: {{ averages().cicloTotal }} días</span>
+            </div>
+          </div>
         </div>
 
         <!-- Operational Threshold & SLA Parameter -->
@@ -518,6 +561,29 @@ export class ExecutiveDashboardComponent {
       aduanaPct: Math.min(100, Math.round((aduana / maxCycle) * 100)),
       cicloTotal
     };
+  });
+
+  readonly modalitySummary = computed(() => {
+    const list = this.jobs();
+    const total = Math.max(1, list.length);
+    const defs: { key: string; label: string; icon: string; barClass: string }[] = [
+      { key: 'AEREO', label: 'Aéreo (A)', icon: 'bi-airplane', barClass: 'bg-primary' },
+      { key: 'FCL', label: 'FCL (F)', icon: 'bi-box-seam', barClass: 'bg-info' },
+      { key: 'LCL', label: 'LCL (L)', icon: 'bi-boxes', barClass: 'bg-success' },
+      { key: 'CUSTOMS', label: 'Customs (C)', icon: 'bi-shield-check', barClass: 'bg-warning' },
+      { key: 'COURIER', label: 'Courier (AC)', icon: 'bi-send', barClass: 'bg-secondary' },
+      { key: 'INLAND', label: 'Inland (I)', icon: 'bi-truck', barClass: 'bg-dark' }
+    ];
+    return defs.map(d => {
+      const count = list.filter(j => j.servicio === d.key).length;
+      return {
+        label: d.label,
+        icon: d.icon,
+        barClass: d.barClass,
+        count,
+        pct: list.length ? Math.round((count / total) * 100) : 0
+      };
+    });
   });
 }
 

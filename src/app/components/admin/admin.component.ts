@@ -33,8 +33,8 @@ interface UserFormState {
           </span>
         </div>
 
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-          <div class="btn-group btn-group-sm bg-white p-1 rounded-3 border border-slate-200 shadow-xs flex-wrap">
+        <div class="d-flex align-items-center gap-2 flex-wrap w-100 w-lg-auto">
+          <div class="d-flex flex-wrap gap-1 bg-white p-1 rounded-3 border border-slate-200 shadow-xs">
             <button
               type="button"
               class="btn btn-sm rounded-2 px-3 fs-xs fw-semibold"

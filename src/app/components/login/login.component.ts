@@ -425,6 +425,7 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
   private planeRefs!: DetailedPlaneRefs;
   private containerRefs!: DetailedContainerRefs;
   private shipRefs!: DetailedShipRefs;
+  private leftShipRefs!: DetailedShipRefs;
 
   private padlockGroup = new THREE.Group();
   private shackleMesh!: THREE.Mesh;
@@ -441,6 +442,7 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
   private phaseElapsed = 0;
   private doorAngle = 0;
   private shipSurgeTime = 0;
+  private leftShipSurgeTime = 0;
   private mouseNormX = 0;
   private mouseNormY = 0;
   private pendingDefaultScreen: ScreenId = 'gerencia';
@@ -485,8 +487,9 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
     }
 
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hits = this.raycaster.intersectObject(this.shipRefs.root, true);
-    const isHit = hits.length > 0;
+    const hitRight = this.raycaster.intersectObject(this.shipRefs.root, true).length > 0;
+    const hitLeft = !hitRight && this.raycaster.intersectObject(this.leftShipRefs.root, true).length > 0;
+    const isHit = hitRight || hitLeft;
     if (isHit !== this.shipHovered()) {
       this.ngZone.run(() => this.shipHovered.set(isHit));
     }
@@ -502,10 +505,14 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
     const h = window.innerHeight || 1;
     this.pointer.set((e.clientX / w) * 2 - 1, -(e.clientY / h) * 2 + 1);
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hits = this.raycaster.intersectObject(this.shipRefs.root, true);
-    if (hits.length > 0) {
+    if (this.raycaster.intersectObject(this.shipRefs.root, true).length > 0) {
       this.shipSurgeTime = 1.0;
       this.spawnWaveRipple(this.shipRefs.root.position.x, -5.5, this.shipRefs.root.position.z, 0xf5b041);
+      return;
+    }
+    if (this.raycaster.intersectObject(this.leftShipRefs.root, true).length > 0) {
+      this.leftShipSurgeTime = 1.0;
+      this.spawnWaveRipple(this.leftShipRefs.root.position.x, -5.5, this.leftShipRefs.root.position.z, 0xf5b041);
       return;
     }
     this.spawnWaveRipple(this.mouseNormX * 10, -5.5, -2, 0x93c5fd);
@@ -599,6 +606,11 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
       (this.shipRefs.wakeMesh.material as THREE.MeshBasicMaterial).opacity = 0;
       (this.shipRefs.bowSpray.material as THREE.MeshBasicMaterial).opacity = 0;
 
+      this.leftShipRefs.root.visible = true;
+      this.leftShipRefs.root.position.set(-this.shipRestX - 0.5, -4.35, this.shipRestZ - 1.2);
+      this.leftShipRefs.root.rotation.set(0.04, 0.54, 0);
+      this.leftShipRefs.root.scale.setScalar(this.shipRestScale * 0.94);
+
       this.phaseElapsed = 0;
     });
   }
@@ -633,23 +645,26 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
       const host = this.canvasHost.nativeElement;
       const w = host.clientWidth || window.innerWidth;
       const h = host.clientHeight || window.innerHeight;
-      const enableShadows = w >= 640;
 
-      this.initScene(w, h, enableShadows);
+      // Shadow-free fast PBR rendering prevents multi-pass shadow stalls on page load
+      this.initScene(w, h);
       this.buildSkyAndOcean(w);
       this.buildTexturedPier();
 
-      this.containerRefs = buildDetailedContainer(enableShadows);
+      this.containerRefs = buildDetailedContainer(false);
       this.containerRefs.root.scale.setScalar(0.35);
       this.scene.add(this.containerRefs.root);
 
-      this.buildPadlock3D(enableShadows);
+      this.buildPadlock3D();
 
-      this.planeRefs = buildDetailedCargoPlane(enableShadows);
+      this.planeRefs = buildDetailedCargoPlane(false);
       this.scene.add(this.planeRefs.root);
 
-      this.shipRefs = buildDetailedContainerShip(enableShadows);
+      this.shipRefs = buildDetailedContainerShip(false);
       this.scene.add(this.shipRefs.root);
+
+      this.leftShipRefs = buildDetailedContainerShip(false);
+      this.scene.add(this.leftShipRefs.root);
 
       this.applyResponsiveLayout(w, h, true);
       this.bindEvents();
@@ -753,13 +768,18 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
       this.shipRefs.root.rotation.set(0.04, -0.52, 0);
       this.shipRefs.root.scale.setScalar(this.shipRestScale);
     }
+    if (this.leftShipRefs?.root && (initialPlacement || this.phase() === 'ready')) {
+      this.leftShipRefs.root.position.set(-this.shipRestX - 0.5, -4.35, this.shipRestZ - 1.2);
+      this.leftShipRefs.root.rotation.set(0.04, 0.54, 0);
+      this.leftShipRefs.root.scale.setScalar(this.shipRestScale * 0.94);
+    }
     if (!initialPlacement && this.containerRefs?.root && this.phase() === 'ready') {
       this.containerRefs.root.scale.setScalar(this.containerRestScale);
       this.containerRefs.root.position.y = this.containerRestY;
     }
   }
 
-  private initScene(w: number, h: number, enableShadows: boolean): void {
+  private initScene(w: number, h: number): void {
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.FogExp2(0x284b6b, 0.008);
 
@@ -770,34 +790,22 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
     this.renderer = new THREE.WebGLRenderer({
       antialias: w >= 480,
       alpha: false,
+      stencil: false,
       powerPreference: 'high-performance'
     });
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
-    this.renderer.shadowMap.enabled = enableShadows;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.enabled = false;
     this.canvasHost.nativeElement.appendChild(this.renderer.domElement);
 
     // Coastal dusk PBR environment map for real metal & glass reflections
     this.scene.environment = createCoastalEnvironmentTexture(this.renderer);
 
-    const hemi = new THREE.HemisphereLight(0xcbe2f7, 0x162a40, 1.15);
+    const hemi = new THREE.HemisphereLight(0xcbe2f7, 0x162a40, 1.2);
     this.scene.add(hemi);
 
     const sunKey = new THREE.DirectionalLight(0xffdfb8, 2.35);
     sunKey.position.set(16, 24, 18);
-    if (enableShadows) {
-      sunKey.castShadow = true;
-      const mapDim = w >= 1024 ? 1024 : 512;
-      sunKey.shadow.mapSize.set(mapDim, mapDim);
-      sunKey.shadow.camera.near = 2;
-      sunKey.shadow.camera.far = 75;
-      sunKey.shadow.camera.left = -22;
-      sunKey.shadow.camera.right = 22;
-      sunKey.shadow.camera.top = 18;
-      sunKey.shadow.camera.bottom = -18;
-      sunKey.shadow.bias = -0.0005;
-    }
     this.scene.add(sunKey);
 
     const rimWarm = new THREE.DirectionalLight(0xffbe7b, 1.4);
@@ -834,7 +842,6 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
     });
     this.oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
     this.oceanMesh.position.set(0, -5.8, -28);
-    this.oceanMesh.receiveShadow = w >= 640;
     this.scene.add(this.oceanMesh);
   }
 
@@ -850,7 +857,6 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
 
     const platform = new THREE.Mesh(new THREE.BoxGeometry(11.8, 1.8, 12.6), pierMat);
     platform.position.set(0, -4.1, 3.2);
-    platform.receiveShadow = true;
     this.scene.add(platform);
 
     const bollardGeo = new THREE.CylinderGeometry(0.18, 0.25, 0.56, 12);
@@ -862,7 +868,7 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  private buildPadlock3D(enableShadows: boolean): void {
+  private buildPadlock3D(): void {
     const brassMat = new THREE.MeshStandardMaterial({
       color: 0xf0b243,
       metalness: 0.92,
@@ -900,7 +906,6 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
     });
     bodyGeo.center();
     const body = new THREE.Mesh(bodyGeo, brassMat);
-    body.castShadow = enableShadows;
 
     const shackleGeo = new THREE.TorusGeometry(0.42, 0.11, 12, 24, Math.PI);
     this.shackleMesh = new THREE.Mesh(shackleGeo, steelMat);
@@ -990,8 +995,16 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
       }
     }
 
-    // Dual ship radars & plane turbofans + strobe
+    // Dual ship radars (both vessels) & plane turbofans + strobe
     this.shipRefs.radarScanners.forEach((sc, i) => (sc.rotation.y += dt * (2.2 + i * 0.9)));
+    this.leftShipRefs.radarScanners.forEach((sc, i) => (sc.rotation.y -= dt * (1.9 + i * 0.8)));
+
+    // Gentle harbor bobbing on companion left ship across all phases
+    this.leftShipSurgeTime = Math.max(0, this.leftShipSurgeTime - dt * 0.75);
+    this.leftShipRefs.root.position.y =
+      -4.35 + Math.sin(t * 0.95 + 2.6) * 0.14 + Math.sin(this.leftShipSurgeTime * Math.PI) * 0.42;
+    this.leftShipRefs.root.rotation.z =
+      Math.sin(t * 0.72 + 1.0) * 0.022 + Math.sin(this.leftShipSurgeTime * Math.PI * 3) * 0.06;
     if (this.planeRefs.root.visible) {
       const fanSpeed = dt * 24;
       this.planeRefs.turbineFans.forEach(fan => (fan.rotation.z += fanSpeed));
@@ -1091,6 +1104,7 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
       this.shipRefs.root.position.y = -4.3 + Math.sin(t * 1.05 + 1.4) * 0.15 + Math.sin(this.shipSurgeTime * Math.PI) * 0.45;
       this.shipRefs.root.rotation.z = Math.sin(t * 0.8) * 0.025 + Math.sin(this.shipSurgeTime * Math.PI * 3) * 0.07;
       this.shipRefs.root.rotation.y += (-0.52 + this.mouseNormX * 0.12 - this.shipRefs.root.rotation.y) * 0.05;
+      this.leftShipRefs.root.rotation.y += (0.54 + this.mouseNormX * 0.12 - this.leftShipRefs.root.rotation.y) * 0.05;
     }
 
     // PHASE 5A: Wrong password shake

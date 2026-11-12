@@ -17,12 +17,12 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
       <div class="card-executive p-3 mb-3 bg-white">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
           
-          <div class="d-flex align-items-center gap-3">
-            <div class="client-avatar d-flex align-items-center justify-content-center text-primary bg-blue-50 rounded-3">
+          <div class="d-flex align-items-start align-items-sm-center gap-2 gap-sm-3 min-w-0">
+            <div class="client-avatar d-flex align-items-center justify-content-center text-primary bg-blue-50 rounded-3 flex-shrink-0">
               <i class="bi bi-buildings fs-5"></i>
             </div>
-            <div>
-              <div class="d-flex align-items-center gap-2">
+            <div class="min-w-0">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
                 <h5 class="fw-bold mb-0 text-dark font-heading">{{ currentUser().clienteNombre || 'Vista Supervisión de Clientes' }}</h5>
                 <span class="badge bg-emerald-50 text-emerald-800 border border-emerald-300 fs-xxs">
                   <i class="bi bi-shield-check me-1"></i>{{ currentUser().clienteNombre ? 'Portal Verificado' : 'Supervisión' }}
@@ -260,9 +260,9 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
         <!-- Block 3: Órdenes de Compra & Relación Shipper-OC -->
         <div class="col-12 col-lg-6">
           <div class="card-executive p-3 h-100">
-            <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom border-slate-100">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2 pb-2 border-bottom border-slate-100">
               <h6 class="fw-bold mb-0 text-dark">Órdenes de Compra (OC)</h6>
-              <div class="d-flex gap-2">
+              <div class="d-flex flex-wrap gap-1">
                 <span class="badge bg-blue-50 text-primary border border-slate-200 mono-font fs-xxs">
                   {{ poInsights().distinctCount }} OC distintas
                 </span>
@@ -274,12 +274,12 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
 
             <div class="d-flex flex-column gap-2" style="max-height: 170px; overflow-y: auto;">
               @for (rel of poInsights().relations; track rel.ref) {
-                <div class="p-2 rounded-2 bg-slate-50 border border-slate-200 d-flex align-items-center justify-content-between gap-2 fs-xxs">
-                  <div class="text-truncate">
+                <div class="p-2 rounded-2 bg-slate-50 border border-slate-200 d-flex align-items-center justify-content-between flex-wrap gap-1 fs-xxs">
+                  <div class="text-truncate min-w-0">
                     <strong class="mono-font text-primary me-2">{{ rel.ref }}</strong>
                     <span class="text-dark">{{ rel.shipper }}</span>
                   </div>
-                  <span class="mono-font badge bg-white text-dark border border-slate-200 flex-shrink-0">
+                  <span class="mono-font badge bg-white text-dark border border-slate-200 text-truncate" style="max-width: 100%;">
                     {{ rel.ocs.join(', ') }}
                   </span>
                 </div>
@@ -299,7 +299,7 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
             </div>
 
             <div class="row g-2 fs-xxs">
-              <div class="col-4">
+              <div class="col-12 col-sm-4">
                 <div class="p-2 rounded-3 bg-slate-50 border border-slate-200 h-100">
                   <div class="fw-bold text-dark mb-1 text-uppercase">Régimen</div>
                   @for (g of customsInsights().byRegimen; track g.label) {
@@ -312,7 +312,7 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
                   }
                 </div>
               </div>
-              <div class="col-4">
+              <div class="col-12 col-sm-4">
                 <div class="p-2 rounded-3 bg-slate-50 border border-slate-200 h-100">
                   <div class="fw-bold text-dark mb-1 text-uppercase">Distrito</div>
                   @for (g of customsInsights().byDistrito; track g.label) {
@@ -325,7 +325,7 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
                   }
                 </div>
               </div>
-              <div class="col-4">
+              <div class="col-12 col-sm-4">
                 <div class="p-2 rounded-3 bg-slate-50 border border-slate-200 h-100">
                   <div class="fw-bold text-dark mb-1 text-uppercase">Tipo Aforo</div>
                   @for (g of customsInsights().byAforo; track g.label) {

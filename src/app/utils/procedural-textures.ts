@@ -28,7 +28,7 @@ function toTexture(canvas: HTMLCanvasElement, srgb = true, repeatX = 1, repeatY 
     tex.wrapS = THREE.ClampToEdgeWrapping;
     tex.wrapT = THREE.ClampToEdgeWrapping;
   }
-  tex.anisotropy = 4;
+  tex.anisotropy = 2;
   tex.needsUpdate = true;
   return tex;
 }
@@ -46,33 +46,29 @@ export function createContainerSideTextures(
   const cached = pbrSetCache.get(key);
   if (cached) return cached;
 
-  const W = 1024;
-  const H = 512;
+  const W = 512;
+  const H = 256;
   const [albedoC, ctx] = makeCanvas(W, H);
   const [bumpC, bCtx] = makeCanvas(W, H);
   const [roughC, rCtx] = makeCanvas(W, H);
 
-  // Base steel paint
   ctx.fillStyle = baseColor;
   ctx.fillRect(0, 0, W, H);
-
   bCtx.fillStyle = '#808080';
   bCtx.fillRect(0, 0, W, H);
-
   rCtx.fillStyle = '#999999';
   rCtx.fillRect(0, 0, W, H);
 
-  // Corrugation ribs (trapezoidal ridges)
-  const ribPitch = 28;
-  for (let x = 28; x < W - 28; x += ribPitch) {
+  const ribPitch = 14;
+  for (let x = 14; x < W - 14; x += ribPitch) {
     const grad = ctx.createLinearGradient(x, 0, x + ribPitch, 0);
     grad.addColorStop(0, 'rgba(0,0,0,0.34)');
-    grad.addColorStop(0.2, 'rgba(255,255,255,0.12)');
+    grad.addColorStop(0.22, 'rgba(255,255,255,0.12)');
     grad.addColorStop(0.55, 'rgba(255,255,255,0.08)');
     grad.addColorStop(0.75, 'rgba(0,0,0,0.36)');
     grad.addColorStop(1, 'rgba(0,0,0,0.05)');
     ctx.fillStyle = grad;
-    ctx.fillRect(x, 28, ribPitch, H - 56);
+    ctx.fillRect(x, 14, ribPitch, H - 28);
 
     const bGrad = bCtx.createLinearGradient(x, 0, x + ribPitch, 0);
     bGrad.addColorStop(0, '#3a3a3a');
@@ -81,76 +77,58 @@ export function createContainerSideTextures(
     bGrad.addColorStop(0.82, '#3a3a3a');
     bGrad.addColorStop(1, '#585858');
     bCtx.fillStyle = bGrad;
-    bCtx.fillRect(x, 28, ribPitch, H - 56);
+    bCtx.fillRect(x, 14, ribPitch, H - 28);
   }
 
-  // Top and bottom structural steel header rails + rivets
   ctx.fillStyle = 'rgba(10, 22, 38, 0.55)';
-  ctx.fillRect(0, 0, W, 28);
-  ctx.fillRect(0, H - 28, W, 28);
+  ctx.fillRect(0, 0, W, 14);
+  ctx.fillRect(0, H - 14, W, 14);
   bCtx.fillStyle = '#d0d0d0';
-  bCtx.fillRect(0, 0, W, 26);
-  bCtx.fillRect(0, H - 26, W, 26);
+  bCtx.fillRect(0, 0, W, 13);
+  bCtx.fillRect(0, H - 13, W, 13);
 
-  for (let rx = 18; rx < W; rx += 32) {
-    [14, H - 14].forEach(ry => {
-      ctx.fillStyle = 'rgba(255,255,255,0.22)';
-      ctx.beginPath();
-      ctx.arc(rx, ry, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-      bCtx.fillStyle = '#ffffff';
-      bCtx.beginPath();
-      bCtx.arc(rx, ry, 3, 0, Math.PI * 2);
-      bCtx.fill();
-    });
-  }
-
-  // Vertical corner posts & subtle grime gradient near bottom
   const dirt = ctx.createLinearGradient(0, H * 0.65, 0, H);
   dirt.addColorStop(0, 'rgba(15, 23, 42, 0)');
   dirt.addColorStop(1, 'rgba(15, 23, 42, 0.35)');
   ctx.fillStyle = dirt;
   ctx.fillRect(0, 0, W, H);
 
-  // Subtle surface patina speckles
-  for (let i = 0; i < 650; i++) {
+  for (let i = 0; i < 160; i++) {
     const sx = (i * 197) % W;
     const sy = (i * 113) % H;
-    const sw = 2 + (i % 6);
-    ctx.fillStyle = i % 3 === 0 ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.05)';
+    const sw = 2 + (i % 4);
+    ctx.fillStyle = i % 3 === 0 ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)';
     ctx.fillRect(sx, sy, sw, 2);
     rCtx.fillStyle = i % 2 === 0 ? '#787878' : '#b8b8b8';
-    rCtx.fillRect(sx, sy, sw * 2, 4);
+    rCtx.fillRect(sx, sy, sw * 2, 3);
   }
 
-  // Stenciled flat graphic plate
   ctx.fillStyle = 'rgba(12, 31, 56, 0.72)';
-  ctx.fillRect(58, 125, 455, 195);
+  ctx.fillRect(28, 62, 230, 98);
   ctx.fillStyle = accentColor;
-  ctx.fillRect(58, 125, 10, 195);
+  ctx.fillRect(28, 62, 5, 98);
 
   ctx.fillStyle = '#f8fafc';
-  ctx.font = '800 72px system-ui, -apple-system, sans-serif';
-  ctx.fillText(brand, 88, 206);
+  ctx.font = '800 36px system-ui, -apple-system, sans-serif';
+  ctx.fillText(brand, 44, 103);
 
   ctx.fillStyle = '#cbd5e1';
-  ctx.font = '600 22px system-ui, -apple-system, sans-serif';
-  ctx.fillText('40\' HIGH CUBE • LOGÍSTICA INTEGRAL', 88, 246);
+  ctx.font = '600 11px system-ui, -apple-system, sans-serif';
+  ctx.fillText('40\' HIGH CUBE • LOGÍSTICA INTEGRAL', 44, 123);
 
   ctx.fillStyle = accentColor;
-  ctx.font = '700 32px ui-monospace, SFMono-Regular, monospace';
-  ctx.fillText(isoCode, 88, 296);
+  ctx.font = '700 16px ui-monospace, SFMono-Regular, monospace';
+  ctx.fillText(isoCode, 44, 148);
 
-  // Spec placard on right side
   ctx.strokeStyle = 'rgba(226, 232, 240, 0.45)';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(750, 145, 205, 130);
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(374, 72, 104, 66);
   ctx.fillStyle = '#e2e8f0';
-  ctx.font = '700 18px ui-monospace, monospace';
-  ctx.fillText('MAX GROSS  32,500 KG', 766, 178);
-  ctx.fillText('TARE        3,850 KG', 766, 206);
-  ctx.fillText('NET        28,650 KG', 766, 234);
-  ctx.fillText('CU. CAP     76.4 M3', 766, 262);
+  ctx.font = '700 9px ui-monospace, monospace';
+  ctx.fillText('MAX GROSS  32,500 KG', 382, 89);
+  ctx.fillText('TARE        3,850 KG', 382, 103);
+  ctx.fillText('NET        28,650 KG', 382, 117);
+  ctx.fillText('CU. CAP     76.4 M3', 382, 131);
 
   const set: PbrTextureSet = {
     map: toTexture(albedoC, true),
@@ -169,8 +147,8 @@ export function createContainerDoorTextures(baseColor = '#173e6a'): PbrTextureSe
   const cached = pbrSetCache.get(key);
   if (cached) return cached;
 
-  const W = 512;
-  const H = 512;
+  const W = 256;
+  const H = 256;
   const [albedoC, ctx] = makeCanvas(W, H);
   const [bumpC, bCtx] = makeCanvas(W, H);
 
@@ -179,35 +157,32 @@ export function createContainerDoorTextures(baseColor = '#173e6a'): PbrTextureSe
   bCtx.fillStyle = '#808080';
   bCtx.fillRect(0, 0, W, H);
 
-  // Horizontal structural ribs on doors
-  for (let y = 55; y < H - 55; y += 64) {
-    const grad = ctx.createLinearGradient(0, y, 0, y + 36);
+  for (let y = 28; y < H - 28; y += 32) {
+    const grad = ctx.createLinearGradient(0, y, 0, y + 18);
     grad.addColorStop(0, 'rgba(0,0,0,0.32)');
     grad.addColorStop(0.25, 'rgba(255,255,255,0.14)');
     grad.addColorStop(0.7, 'rgba(255,255,255,0.06)');
     grad.addColorStop(1, 'rgba(0,0,0,0.3)');
     ctx.fillStyle = grad;
-    ctx.fillRect(22, y, W - 44, 36);
+    ctx.fillRect(11, y, W - 22, 18);
 
-    const bGrad = bCtx.createLinearGradient(0, y, 0, y + 36);
+    const bGrad = bCtx.createLinearGradient(0, y, 0, y + 18);
     bGrad.addColorStop(0, '#444');
     bGrad.addColorStop(0.3, '#ddd');
     bGrad.addColorStop(0.8, '#444');
     bCtx.fillStyle = bGrad;
-    bCtx.fillRect(22, y, W - 44, 36);
+    bCtx.fillRect(11, y, W - 22, 18);
   }
 
-  // Rubber gasket frame
   ctx.strokeStyle = '#0b1320';
-  ctx.lineWidth = 18;
-  ctx.strokeRect(9, 9, W - 18, H - 18);
+  ctx.lineWidth = 9;
+  ctx.strokeRect(4, 4, W - 8, H - 8);
 
-  // Hazard/Security seal badge
   ctx.fillStyle = '#e09f3e';
-  ctx.fillRect(W * 0.62, 74, 128, 42);
+  ctx.fillRect(W * 0.6, 36, 68, 22);
   ctx.fillStyle = '#0f172a';
-  ctx.font = '800 17px system-ui, sans-serif';
-  ctx.fillText('PRECINTO ISO', W * 0.62 + 12, 101);
+  ctx.font = '800 9px system-ui, sans-serif';
+  ctx.fillText('PRECINTO ISO', W * 0.6 + 5, 50);
 
   const doorSet: PbrTextureSet = {
     map: toTexture(albedoC, true),
@@ -225,8 +200,8 @@ export function createWoodFloorTextures(): PbrTextureSet {
   const cached = pbrSetCache.get(key);
   if (cached) return cached;
 
-  const W = 512;
-  const H = 512;
+  const W = 256;
+  const H = 256;
   const [albedoC, ctx] = makeCanvas(W, H);
   const [bumpC, bCtx] = makeCanvas(W, H);
 
@@ -235,27 +210,25 @@ export function createWoodFloorTextures(): PbrTextureSet {
   bCtx.fillStyle = '#909090';
   bCtx.fillRect(0, 0, W, H);
 
-  const plankH = 64;
+  const plankH = 32;
   for (let row = 0; row < H / plankH; row++) {
     const y = row * plankH;
     const shade = (row % 3 - 1) * 10;
     ctx.fillStyle = `rgb(${112 + shade}, ${82 + shade}, ${54 + shade})`;
-    ctx.fillRect(0, y + 2, W, plankH - 3);
+    ctx.fillRect(0, y + 1, W, plankH - 2);
 
-    // Wood grain streaks
-    for (let g = 0; g < 18; g++) {
-      const gy = y + 4 + ((g * 19) % (plankH - 8));
+    for (let g = 0; g < 10; g++) {
+      const gy = y + 3 + ((g * 11) % (plankH - 6));
       ctx.fillStyle = g % 2 === 0 ? 'rgba(42,26,14,0.16)' : 'rgba(210,170,120,0.08)';
-      ctx.fillRect(0, gy, W, 2);
+      ctx.fillRect(0, gy, W, 1);
       bCtx.fillStyle = g % 2 === 0 ? '#707070' : '#a8a8a8';
-      bCtx.fillRect(0, gy, W, 2);
+      bCtx.fillRect(0, gy, W, 1);
     }
 
-    // Seam line
     ctx.fillStyle = '#2a1d12';
-    ctx.fillRect(0, y, W, 3);
+    ctx.fillRect(0, y, W, 2);
     bCtx.fillStyle = '#202020';
-    bCtx.fillRect(0, y, W, 3);
+    bCtx.fillRect(0, y, W, 2);
   }
 
   const woodSet: PbrTextureSet = {
@@ -274,8 +247,8 @@ export function createPlaneFuselageTextures(): PbrTextureSet {
   const cached = pbrSetCache.get(key);
   if (cached) return cached;
 
-  const W = 1024;
-  const H = 512;
+  const W = 512;
+  const H = 256;
   const [albedoC, ctx] = makeCanvas(W, H);
   const [bumpC, bCtx] = makeCanvas(W, H);
 
@@ -287,19 +260,17 @@ export function createPlaneFuselageTextures(): PbrTextureSet {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
-  // Gold accent cheatline
   ctx.fillStyle = '#d99b38';
-  ctx.fillRect(0, H * 0.56, W, 16);
+  ctx.fillRect(0, H * 0.56, W, 8);
 
-  // Panel grid & rivets
   bCtx.fillStyle = '#888888';
   bCtx.fillRect(0, 0, W, H);
   ctx.strokeStyle = 'rgba(100, 116, 139, 0.28)';
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1;
   bCtx.strokeStyle = '#505050';
-  bCtx.lineWidth = 2;
+  bCtx.lineWidth = 1.5;
 
-  for (let x = 0; x < W; x += 64) {
+  for (let x = 0; x < W; x += 32) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, H);
@@ -310,28 +281,18 @@ export function createPlaneFuselageTextures(): PbrTextureSet {
     bCtx.lineTo(x, H);
     bCtx.stroke();
   }
-  for (let y = 0; y < H; y += 64) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(W, y);
-    ctx.stroke();
-  }
 
-  // Forward cargo bay hatch & fuselage lettering
   ctx.strokeStyle = '#64748b';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(180, 145, 135, 115);
+  ctx.lineWidth = 2;
+  ctx.strokeRect(90, 72, 68, 58);
 
   ctx.fillStyle = '#0f2947';
-  ctx.font = '800 34px system-ui, sans-serif';
-  ctx.fillText('ARLOGS CARGO', 360, 215);
+  ctx.font = '800 17px system-ui, sans-serif';
+  ctx.fillText('ARLOGS CARGO', 180, 108);
 
-  // Subtle porthole windows near cockpit section
-  for (let wx = 780; wx < 940; wx += 24) {
+  for (let wx = 390; wx < 470; wx += 12) {
     ctx.fillStyle = '#1e293b';
-    ctx.beginPath();
-    ctx.roundRect(wx, 185, 12, 18, 5);
-    ctx.fill();
+    ctx.fillRect(wx, 92, 6, 9);
   }
 
   const planeSet: PbrTextureSet = {
@@ -350,57 +311,47 @@ export function createShipHullTextures(): PbrTextureSet {
   const cached = pbrSetCache.get(key);
   if (cached) return cached;
 
-  const W = 1024;
-  const H = 512;
+  const W = 512;
+  const H = 256;
   const [albedoC, ctx] = makeCanvas(W, H);
   const [bumpC, bCtx] = makeCanvas(W, H);
 
-  // Upper hull slate navy + red anti-fouling lower hull
   ctx.fillStyle = '#16293d';
   ctx.fillRect(0, 0, W, H * 0.58);
   ctx.fillStyle = '#e2e8f0';
-  ctx.fillRect(0, H * 0.56, W, 14);
+  ctx.fillRect(0, H * 0.56, W, 7);
   ctx.fillStyle = '#8b2626';
   ctx.fillRect(0, H * 0.59, W, H * 0.41);
 
   bCtx.fillStyle = '#808080';
   bCtx.fillRect(0, 0, W, H);
 
-  // Welded steel hull plates
-  for (let y = 0; y < H; y += 44) {
+  for (let y = 0; y < H; y += 22) {
     ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.fillRect(0, y, W, 2);
+    ctx.fillRect(0, y, W, 1);
     bCtx.fillStyle = '#555555';
-    bCtx.fillRect(0, y, W, 3);
+    bCtx.fillRect(0, y, W, 2);
   }
-  for (let x = 0; x < W; x += 86) {
+  for (let x = 0; x < W; x += 43) {
     ctx.fillStyle = 'rgba(0,0,0,0.14)';
-    ctx.fillRect(x, 0, 2, H);
+    ctx.fillRect(x, 0, 1, H);
     bCtx.fillStyle = '#606060';
-    bCtx.fillRect(x, 0, 2, H);
+    bCtx.fillRect(x, 0, 1, H);
   }
 
-  // Salt/rust streaking near waterline
-  for (let i = 0; i < 420; i++) {
+  for (let i = 0; i < 120; i++) {
     const sx = (i * 73) % W;
-    const sy = H * 0.52 + (i % 45);
+    const sy = H * 0.52 + (i % 24);
     ctx.fillStyle = i % 2 === 0 ? 'rgba(200, 150, 110, 0.14)' : 'rgba(255,255,255,0.08)';
-    ctx.fillRect(sx, sy, 3, 18 + (i % 20));
+    ctx.fillRect(sx, sy, 2, 10 + (i % 10));
   }
 
-  // Ship Name & Draft Numbers
   ctx.fillStyle = '#f8fafc';
-  ctx.font = '800 42px system-ui, sans-serif';
-  ctx.fillText('ARLOGS PACIFIC', 110, 155);
+  ctx.font = '800 21px system-ui, sans-serif';
+  ctx.fillText('ARLOGS PACIFIC', 55, 78);
   ctx.fillStyle = '#e09f3e';
-  ctx.font = '700 22px system-ui, sans-serif';
-  ctx.fillText('GUAYAQUIL • IMO 9841207', 110, 195);
-
-  ctx.fillStyle = '#e2e8f0';
-  ctx.font = '700 18px ui-monospace, monospace';
-  ['12M', '10M', '8M'].forEach((label, i) => {
-    ctx.fillText(label, W - 120, 240 + i * 52);
-  });
+  ctx.font = '700 11px system-ui, sans-serif';
+  ctx.fillText('GUAYAQUIL • IMO 9841207', 55, 98);
 
   const shipSet: PbrTextureSet = {
     map: toTexture(albedoC, true),
@@ -418,26 +369,25 @@ export function createBridgeFacadeTexture(): THREE.CanvasTexture {
   const cached = singleTexCache.get(key);
   if (cached) return cached;
 
-  const [c, ctx] = makeCanvas(512, 512);
+  const [c, ctx] = makeCanvas(256, 256);
   ctx.fillStyle = '#edf2f7';
-  ctx.fillRect(0, 0, 512, 512);
+  ctx.fillRect(0, 0, 256, 256);
 
-  // Deck levels & cabin windows
   for (let row = 0; row < 4; row++) {
-    const y = 45 + row * 105;
+    const y = 22 + row * 52;
     ctx.fillStyle = '#cbd5e1';
-    ctx.fillRect(0, y + 66, 512, 8);
+    ctx.fillRect(0, y + 33, 256, 4);
 
     for (let col = 0; col < 6; col++) {
-      const x = 38 + col * 76;
+      const x = 19 + col * 38;
       const lit = (row + col) % 2 === 0;
       ctx.fillStyle = lit ? '#fbbf24' : '#1e293b';
       ctx.globalAlpha = lit ? 0.85 : 1;
-      ctx.fillRect(x, y, 52, 34);
+      ctx.fillRect(x, y, 26, 17);
       ctx.globalAlpha = 1;
       ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(x, y, 52, 34);
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x, y, 26, 17);
     }
   }
   const tex = toTexture(c, true);
@@ -446,7 +396,7 @@ export function createBridgeFacadeTexture(): THREE.CanvasTexture {
 }
 
 /**
- * Seamless tiled water bump map for realistic animated surface specular highlights.
+ * Seamless tiled water bump map using a single cached gradient stamp for instant startup.
  */
 export function createWaterBumpTexture(): THREE.CanvasTexture {
   const key = 'waterBump';
@@ -457,29 +407,33 @@ export function createWaterBumpTexture(): THREE.CanvasTexture {
     return clone;
   }
 
-  const S = 512;
+  const S = 256;
   const [c, ctx] = makeCanvas(S, S);
   ctx.fillStyle = '#808080';
   ctx.fillRect(0, 0, S, S);
 
-  for (let i = 0; i < 520; i++) {
+  const [lightStamp, lCtx] = makeCanvas(32, 32);
+  const lGrad = lCtx.createRadialGradient(16, 16, 1, 16, 16, 16);
+  lGrad.addColorStop(0, 'rgba(235,235,235,0.24)');
+  lGrad.addColorStop(1, 'rgba(128,128,128,0)');
+  lCtx.fillStyle = lGrad;
+  lCtx.fillRect(0, 0, 32, 32);
+
+  const [darkStamp, dCtx] = makeCanvas(32, 32);
+  const dGrad = dCtx.createRadialGradient(16, 16, 1, 16, 16, 16);
+  dGrad.addColorStop(0, 'rgba(35,35,35,0.24)');
+  dGrad.addColorStop(1, 'rgba(128,128,128,0)');
+  dCtx.fillStyle = dGrad;
+  dCtx.fillRect(0, 0, 32, 32);
+
+  for (let i = 0; i < 140; i++) {
     const x = (i * 97) % S;
     const y = (i * 59) % S;
-    const rx = 24 + (i % 34);
-    const ry = 7 + (i % 10);
-    const grad = ctx.createRadialGradient(x, y, 1, x, y, rx);
-    const bright = i % 2 === 0 ? 'rgba(235,235,235,0.22)' : 'rgba(35,35,35,0.22)';
-    grad.addColorStop(0, bright);
-    grad.addColorStop(1, 'rgba(128,128,128,0)');
-    ctx.fillStyle = grad;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(1, ry / rx);
-    ctx.beginPath();
-    ctx.arc(0, 0, rx, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    const w = 22 + (i % 24);
+    const h = 7 + (i % 8);
+    ctx.drawImage(i % 2 === 0 ? lightStamp : darkStamp, x - w / 2, y - h / 2, w, h);
   }
+
   const bumpTex = toTexture(c, false, 10, 10);
   singleTexCache.set(key, bumpTex);
   const clone = bumpTex.clone();
@@ -495,7 +449,7 @@ export function createPortPierTextures(): PbrTextureSet {
   const cached = pbrSetCache.get(key);
   if (cached) return cached;
 
-  const S = 512;
+  const S = 256;
   const [c, ctx] = makeCanvas(S, S);
   const [bC, bCtx] = makeCanvas(S, S);
 
@@ -504,26 +458,24 @@ export function createPortPierTextures(): PbrTextureSet {
   bCtx.fillStyle = '#808080';
   bCtx.fillRect(0, 0, S, S);
 
-  for (let i = 0; i < 1600; i++) {
+  for (let i = 0; i < 320; i++) {
     const x = (i * 173) % S;
     const y = (i * 131) % S;
     const v = 45 + (i % 40);
     ctx.fillStyle = `rgb(${v}, ${v + 8}, ${v + 18})`;
-    ctx.fillRect(x, y, 3, 3);
+    ctx.fillRect(x, y, 2, 2);
     bCtx.fillStyle = i % 2 === 0 ? '#a0a0a0' : '#656565';
     bCtx.fillRect(x, y, 2, 2);
   }
 
-  // Expansion slabs
   ctx.strokeStyle = 'rgba(15, 23, 42, 0.65)';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(8, 8, S - 16, S - 16);
+  ctx.lineWidth = 2;
+  ctx.strokeRect(4, 4, S - 8, S - 8);
 
-  // Amber port apron safety stripe border
   ctx.strokeStyle = 'rgba(224, 159, 62, 0.8)';
-  ctx.lineWidth = 10;
-  ctx.setLineDash([28, 14]);
-  ctx.strokeRect(24, 24, S - 48, S - 48);
+  ctx.lineWidth = 5;
+  ctx.setLineDash([14, 7]);
+  ctx.strokeRect(12, 12, S - 24, S - 24);
 
   const pierSet: PbrTextureSet = {
     map: toTexture(c, true),
@@ -534,15 +486,16 @@ export function createPortPierTextures(): PbrTextureSet {
 }
 
 /**
- * Atmospheric coastal dusk sky gradient dome texture (twilight slate blue melting into silver-amber horizon).
+ * Atmospheric coastal dusk sky gradient dome texture.
  */
 export function createSkyDomeTexture(): THREE.CanvasTexture {
   const key = 'skyDome';
   const cached = singleTexCache.get(key);
   if (cached) return cached;
 
-  const [c, ctx] = makeCanvas(1024, 1024);
-  const sky = ctx.createLinearGradient(0, 0, 0, 1024);
+  const S = 512;
+  const [c, ctx] = makeCanvas(S, S);
+  const sky = ctx.createLinearGradient(0, 0, 0, S);
   sky.addColorStop(0.0, '#0c1b2e');
   sky.addColorStop(0.28, '#163252');
   sky.addColorStop(0.46, '#275077');
@@ -551,37 +504,16 @@ export function createSkyDomeTexture(): THREE.CanvasTexture {
   sky.addColorStop(0.68, '#23425f');
   sky.addColorStop(1.0, '#0a1829');
   ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, 1024, 1024);
+  ctx.fillRect(0, 0, S, S);
 
-  // Soft horizon glow behind landing corridor
-  const glow = ctx.createRadialGradient(512, 625, 20, 512, 625, 420);
+  const glow = ctx.createRadialGradient(256, 312, 10, 256, 312, 210);
   glow.addColorStop(0, 'rgba(245, 194, 128, 0.42)');
   glow.addColorStop(0.45, 'rgba(125, 168, 204, 0.18)');
   glow.addColorStop(1, 'rgba(12, 27, 46, 0)');
   ctx.fillStyle = glow;
-  ctx.fillRect(0, 200, 1024, 650);
-
-  // Wispy backlit cirrus clouds
-  for (let i = 0; i < 28; i++) {
-    const cx = (i * 157) % 1024;
-    const cy = 360 + (i % 7) * 28;
-    const cw = 180 + (i % 5) * 45;
-    const ch = 16 + (i % 4) * 6;
-    const cg = ctx.createRadialGradient(cx, cy, 4, cx, cy, cw);
-    cg.addColorStop(0, 'rgba(255, 232, 205, 0.08)');
-    cg.addColorStop(1, 'rgba(255, 232, 205, 0)');
-    ctx.fillStyle = cg;
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.scale(1, ch / cw);
-    ctx.beginPath();
-    ctx.arc(0, 0, cw, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
+  ctx.fillRect(0, 100, S, 325);
 
   const skyTex = toTexture(c, true);
   singleTexCache.set(key, skyTex);
   return skyTex;
 }
-

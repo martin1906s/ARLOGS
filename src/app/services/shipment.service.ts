@@ -2,7 +2,6 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { ShipmentJob, Quotation, RoleUser, DEMO_USERS, UserRole, ServiceType, ServicePrefix } from '../models/shipment.model';
 import { INITIAL_MOCK_JOBS } from '../models/mock-data';
 import { AuditService } from './audit.service';
-import * as XLSX from 'xlsx';
 
 @Injectable({
   providedIn: 'root'
@@ -611,8 +610,8 @@ export class ShipmentService {
     });
   }
 
-  // Excel Export
-  exportToExcel(filteredJobs: ShipmentJob[]): void {
+  // Excel Export (Lazy-loaded SheetJS to keep initial startup fast)
+  async exportToExcel(filteredJobs: ShipmentJob[]): Promise<void> {
     const user = this.currentUser();
     const rows = filteredJobs.map(j => {
       const base: Record<string, any> = {
@@ -661,6 +660,7 @@ export class ShipmentService {
       return base;
     });
 
+    const XLSX = await import('xlsx');
     const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Embarques ARLOGS');
