@@ -1,5 +1,16 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
-import { ShipmentJob, Quotation, RoleUser, DEMO_USERS, UserRole, ServiceType, ServicePrefix } from '../models/shipment.model';
+import {
+  ShipmentJob,
+  Quotation,
+  RoleUser,
+  DEMO_USERS,
+  UserRole,
+  ServiceType,
+  ServicePrefix,
+  WarehouseId,
+  WarehouseItem,
+  WarehouseMovement
+} from '../models/shipment.model';
 import { INITIAL_MOCK_JOBS } from '../models/mock-data';
 import { AuditService } from './audit.service';
 
@@ -14,6 +25,8 @@ export class ShipmentService {
   // Reactive state signals
   readonly jobs = signal<ShipmentJob[]>([]);
   readonly quotations = signal<Quotation[]>([]);
+  readonly warehouseItems = signal<WarehouseItem[]>([]);
+  readonly warehouseMovements = signal<WarehouseMovement[]>([]);
   readonly currentUser = signal<RoleUser>(DEMO_USERS[0]); // Overwritten upon login
   readonly alertThresholdDays = signal<number>(15); // Default 15 days, editable by Gerencia / Admin
 
@@ -22,8 +35,47 @@ export class ShipmentService {
   }
 
   private initData(): void {
-    // Recalculate all 21 initial mock jobs with our business rules engine
-    const computedJobs = INITIAL_MOCK_JOBS.map(job => this.calculateJobMetrics(job, this.alertThresholdDays()));
+    // Seed commercial pricing/billing metadata on mock jobs (strictly hidden from Operaciones UI)
+    const computedJobs = INITIAL_MOCK_JOBS.map((rawJob, idx) => {
+      const calc = this.calculateJobMetrics(rawJob, this.alertThresholdDays());
+      const baseByService: Record<ServiceType, [number, number, number]> = {
+        AEREO: [2450, 1980, 15],
+        FCL: [4600, 3850, 30],
+        LCL: [1850, 1460, 15],
+        CUSTOMS: [780, 520, 15],
+        COURIER: [640, 480, 15],
+        INLAND: [420, 310, 15]
+      };
+      const [baseVenta, baseCosto, basePlazo] = baseByService[calc.servicio];
+      const variance = (idx % 4) * 280;
+      const isHeavyFcl = calc.servicio === 'FCL' && idx % 3 === 1;
+      const valorVentaCotizado = isHeavyFcl ? 7100 : baseVenta + variance;
+      const costoEstimadoCotizado = isHeavyFcl ? 6050 : baseCosto + Math.round(variance * 0.78);
+      const plazoPagoDias = isHeavyFcl ? 30 : basePlazo;
+
+      if (calc.estado === 'CERRADO') {
+        const realDelta = idx % 2 === 0 ? 120 : -90;
+        return {
+          ...calc,
+          valorVentaCotizado,
+          costoEstimadoCotizado,
+          plazoPagoDias,
+          facturaNumero: `FAC-001-${(410 + idx).toString().padStart(5, '0')}`,
+          valorFacturadoReal: valorVentaCotizado + realDelta,
+          costoReal: costoEstimadoCotizado + (idx % 3 === 0 ? 60 : -40),
+          estadoCobro: (idx % 3 === 0 ? 'FACTURADA' : 'COBRADA') as ShipmentJob['estadoCobro'],
+          fechaFactura: calc.h10_informeSalida || calc.h6_pesoRecibido || '2026-11-05'
+        };
+      }
+
+      return {
+        ...calc,
+        valorVentaCotizado,
+        costoEstimadoCotizado,
+        plazoPagoDias,
+        estadoCobro: 'PENDIENTE_FACTURAR' as const
+      };
+    });
     this.jobs.set(computedJobs);
 
     // Initial mock quotations in Pricing
@@ -41,7 +93,10 @@ export class ShipmentService {
         ordenesCompra: ['OC-1008', 'OC-1009'],
         aduanaPorArlogs: 'SI',
         fechaCotizacion: '2026-11-09',
-        estado: 'PENDIENTE'
+        estado: 'PENDIENTE',
+        valorVentaCotizado: 2650,
+        costoEstimadoCotizado: 2120,
+        plazoPagoDias: 15
       },
       {
         id: 'QR-023-26',
@@ -56,10 +111,136 @@ export class ShipmentService {
         ordenesCompra: ['OC-2009'],
         aduanaPorArlogs: 'SI',
         fechaCotizacion: '2026-11-10',
-        estado: 'PENDIENTE'
+        estado: 'PENDIENTE',
+        valorVentaCotizado: 7000,
+        costoEstimadoCotizado: 5950,
+        plazoPagoDias: 30
       }
     ];
     this.quotations.set(initialQuotes);
+
+    // Initial Kardex Stock across 2 Rented Warehouses (Operaciones 3 - sin costeo de inventario)
+    const initialItems: WarehouseItem[] = [
+      {
+        id: 'KAR-101',
+        bodegaId: 'BODEGA_1',
+        bodegaNombre: 'Bodega Norte (GYE)',
+        clienteId: 'CLI-001',
+        cliente: 'Industrias Andinas DEMO S.A.',
+        refArlogs: 'A901-2026',
+        ordenCompra: 'OC-1001',
+        descripcion: 'Válvulas de control neumático y repuestos industriales',
+        cantidadInicial: 40,
+        cantidadDisponible: 24,
+        unidad: 'Cajas',
+        pesoKg: 121,
+        fechaIngreso: '2026-10-18',
+        ubicacionRack: 'RACK-A04',
+        estado: 'PARCIAL',
+        ultimaGuiaRemision: 'GR-001-0118'
+      },
+      {
+        id: 'KAR-102',
+        bodegaId: 'BODEGA_1',
+        bodegaNombre: 'Bodega Norte (GYE)',
+        clienteId: 'CLI-001',
+        cliente: 'Industrias Andinas DEMO S.A.',
+        refArlogs: 'L901-2026',
+        ordenCompra: 'OC-1005',
+        descripcion: 'Paneles eléctricos modulares IP65',
+        cantidadInicial: 12,
+        cantidadDisponible: 12,
+        unidad: 'Pallets',
+        pesoKg: 940,
+        fechaIngreso: '2026-11-04',
+        ubicacionRack: 'RACK-B02',
+        estado: 'EN_BODEGA'
+      },
+      {
+        id: 'KAR-103',
+        bodegaId: 'BODEGA_2',
+        bodegaNombre: 'Bodega Sur (Puerto Marítimo)',
+        clienteId: 'CLI-002',
+        cliente: 'Comercial Pacífico DEMO Cía. Ltda.',
+        refArlogs: 'F902-2026',
+        ordenCompra: 'OC-2003',
+        descripcion: 'Compresores centrífugos embalaje exportación',
+        cantidadInicial: 18,
+        cantidadDisponible: 18,
+        unidad: 'Bultos',
+        pesoKg: 2450,
+        fechaIngreso: '2026-11-07',
+        ubicacionRack: 'ZONA-C11',
+        estado: 'EN_BODEGA'
+      },
+      {
+        id: 'KAR-104',
+        bodegaId: 'BODEGA_2',
+        bodegaNombre: 'Bodega Sur (Puerto Marítimo)',
+        clienteId: 'CLI-002',
+        cliente: 'Comercial Pacífico DEMO Cía. Ltda.',
+        refArlogs: 'I901-2026',
+        ordenCompra: 'OC-2004',
+        descripcion: 'Lote tubería acero inoxidable 316L',
+        cantidadInicial: 60,
+        cantidadDisponible: 0,
+        unidad: 'Unidades',
+        pesoKg: 1320,
+        fechaIngreso: '2026-10-25',
+        ubicacionRack: 'PATIO-03',
+        estado: 'DESPACHADO',
+        ultimaGuiaRemision: 'GR-002-0094'
+      }
+    ];
+    this.warehouseItems.set(initialItems);
+
+    const initialMoves: WarehouseMovement[] = [
+      {
+        id: 'MOV-304',
+        itemId: 'KAR-103',
+        bodegaNombre: 'Bodega Sur (Puerto Marítimo)',
+        tipo: 'INGRESO',
+        cantidad: 18,
+        guiaRemision: 'ING-B2-0412',
+        ordenCompra: 'OC-2003',
+        cliente: 'Comercial Pacífico DEMO Cía. Ltda.',
+        descripcion: 'Compresores centrífugos embalaje exportación',
+        responsable: 'Jorge Zambrano',
+        fecha: '2026-11-07 15:10',
+        observacion: 'Conteo físico conforme (18 bultos intactos)'
+      },
+      {
+        id: 'MOV-303',
+        itemId: 'KAR-104',
+        bodegaNombre: 'Bodega Sur (Puerto Marítimo)',
+        tipo: 'SALIDA',
+        cantidad: 60,
+        guiaRemision: 'GR-002-0094',
+        ordenCompra: 'OC-2004',
+        cliente: 'Comercial Pacífico DEMO Cía. Ltda.',
+        descripcion: 'Lote tubería acero inoxidable 316L',
+        transporteInland: 'I901-2026 / Placa GSY-4821',
+        responsable: 'Jorge Zambrano',
+        fecha: '2026-11-06 10:40',
+        observacion: 'Despacho total con Guía de Remisión'
+      },
+      {
+        id: 'MOV-302',
+        itemId: 'KAR-101',
+        bodegaNombre: 'Bodega Norte (GYE)',
+        tipo: 'SALIDA',
+        cantidad: 16,
+        guiaRemision: 'GR-001-0118',
+        ordenCompra: 'OC-1001',
+        cliente: 'Industrias Andinas DEMO S.A.',
+        descripcion: 'Válvulas de control neumático y repuestos industriales',
+        transporteInland: 'Inland Local / Placa PBA-9102',
+        responsable: 'Jorge Zambrano',
+        fecha: '2026-11-05 09:20',
+        observacion: 'Retiro parcial solicitado por planta Quito'
+      }
+    ];
+    this.warehouseMovements.set(initialMoves);
   }
 
   // Set user directly (used by AuthService)
@@ -348,14 +529,12 @@ export class ShipmentService {
       throw new Error('Solo Pricing puede crear cotizaciones.');
     }
 
-    // Sequence format QR-XXX-26
-    const count = this.quotations().length + 22; // next available sequence
-    const qrId = `QR-${count.toString().padStart(3, '0')}-26`;
-
-    // Check duplicate
-    if (this.quotations().some(q => q.id === qrId)) {
-      throw new Error(`El código ${qrId} ya existe. Evitando duplicidad.`);
-    }
+    // Collision-free sequence QR-XXX-26 (never repeats even after deletions)
+    const maxSeq = this.quotations().reduce((max, q) => {
+      const m = /^QR-(\d+)-\d+$/i.exec(q.id);
+      return m ? Math.max(max, Number(m[1])) : max;
+    }, 23);
+    const qrId = `QR-${(maxSeq + 1).toString().padStart(3, '0')}-26`;
 
     const newQuote: Quotation = {
       ...data,
@@ -372,9 +551,19 @@ export class ShipmentService {
       categoria: 'PRICING_QR',
       entidad: qrId,
       accion: 'Nueva Cotización QR',
-      detalle: `Cliente: ${data.cliente} | ${data.servicio} | OC: ${data.ordenesCompra.join(', ')}`
+      detalle: `Cliente: ${data.cliente} | ${data.servicio} | Venta $${data.valorVentaCotizado ?? 0} | OC: ${data.ordenesCompra.join(', ')}`
     });
     return newQuote;
+  }
+
+  private nextRefForPrefix(prefix: ServicePrefix): string {
+    const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`^${escaped}(\\d+)-2026$`, 'i');
+    const maxSeq = this.jobs().reduce((max, j) => {
+      const m = regex.exec(j.refArlogs);
+      return m ? Math.max(max, Number(m[1])) : max;
+    }, 900);
+    return `${prefix}${maxSeq + 1}-2026`;
   }
 
   // Approve Quotation (Pricing / Gerencia / Admin) -> Automatically creates unique ARLOGS Reference
@@ -390,13 +579,9 @@ export class ShipmentService {
       throw new Error('Esta cotización ya fue aprobada y tiene una referencia activa.');
     }
 
-    // Determine prefix and sequential number
-    const prefix = quote.serviceCode;
-    const samePrefixJobs = this.jobs().filter(j => j.serviceCode === prefix);
-    const nextSeq = 900 + samePrefixJobs.length + 1;
-    const newRef = `${prefix}${nextSeq}-2026`;
+    const newRef = this.nextRefForPrefix(quote.serviceCode);
 
-    // Create the operational shipment job transferring data seamlessly
+    // Create the operational shipment job transferring data seamlessly (without re-typing)
     const newJob: ShipmentJob = {
       refArlogs: newRef,
       qrCode: quote.id,
@@ -428,7 +613,11 @@ export class ShipmentService {
       responsablePago: 'CLIENTE',
       regimenAduana: quote.aduanaPorArlogs === 'SI' ? 'Régimen 10 (Consumo)' : 'N/A',
       distritoAduana: quote.servicio === 'AEREO' ? 'Guayaquil Aéreo' : 'Guayaquil Marítimo',
-      aforoAduana: 'Documental'
+      aforoAduana: 'Documental',
+      valorVentaCotizado: quote.valorVentaCotizado ?? 0,
+      costoEstimadoCotizado: quote.costoEstimadoCotizado ?? 0,
+      plazoPagoDias: quote.plazoPagoDias ?? 15,
+      estadoCobro: 'PENDIENTE_FACTURAR'
     };
 
     const calculatedJob = this.calculateJobMetrics(newJob, this.alertThresholdDays());
@@ -536,9 +725,7 @@ export class ShipmentService {
     }
 
     const prefix = data.serviceCode;
-    const samePrefixJobs = this.jobs().filter(j => j.serviceCode === prefix);
-    const nextSeq = 900 + samePrefixJobs.length + 1;
-    const newRef = `${prefix}${nextSeq}-2026`;
+    const newRef = this.nextRefForPrefix(prefix);
 
     const newJob: ShipmentJob = {
       refArlogs: newRef,
@@ -610,9 +797,210 @@ export class ShipmentService {
     });
   }
 
+  // Contabilidad / Facturación: Issue invoice or register payment without re-typing job data
+  updateBilling(
+    refArlogs: string,
+    billing: {
+      facturaNumero: string;
+      valorFacturadoReal: number;
+      costoReal: number;
+      estadoCobro: 'FACTURADA' | 'COBRADA' | 'VENCIDA';
+    }
+  ): ShipmentJob {
+    const user = this.currentUser();
+    if (user.role !== 'contabilidad' && user.role !== 'gerencia' && user.role !== 'admin') {
+      throw new Error('Solo Contabilidad, Gerencia o Administración pueden emitir facturas o cobros.');
+    }
+
+    let updatedJob: ShipmentJob | null = null;
+    const today = this.referenceDate.toISOString().split('T')[0];
+
+    this.jobs.update(list =>
+      list.map(j => {
+        if (j.refArlogs !== refArlogs) return j;
+        updatedJob = {
+          ...j,
+          facturaNumero: billing.facturaNumero.trim().toUpperCase(),
+          valorFacturadoReal: Number(billing.valorFacturadoReal),
+          costoReal: Number(billing.costoReal),
+          estadoCobro: billing.estadoCobro,
+          fechaFactura: j.fechaFactura ?? today
+        };
+        return updatedJob;
+      })
+    );
+
+    if (!updatedJob) throw new Error(`Referencia ${refArlogs} no encontrada.`);
+    const profitReal = billing.valorFacturadoReal - billing.costoReal;
+
+    this.auditService.record({
+      usuario: user.nombre,
+      email: user.email,
+      rol: user.role,
+      categoria: 'FACTURACION',
+      entidad: refArlogs,
+      accion: billing.estadoCobro === 'COBRADA' ? 'Registro de Cobro' : 'Emisión de Factura',
+      detalle: `${billing.facturaNumero} | Facturado $${billing.valorFacturadoReal.toFixed(0)} | Profit $${profitReal.toFixed(0)} | Estado: ${billing.estadoCobro}`
+    });
+
+    return updatedJob;
+  }
+
+  // Operaciones 3 / Bodegas Kardex: Receipt of cargo by count (no cost valuation)
+  registerWarehouseReceipt(input: {
+    bodegaId: WarehouseId;
+    clienteId: string;
+    cliente: string;
+    refArlogs: string;
+    ordenCompra: string;
+    descripcion: string;
+    cantidad: number;
+    unidad: string;
+    pesoKg: number;
+    ubicacionRack: string;
+    observacion?: string;
+  }): WarehouseItem {
+    const user = this.currentUser();
+    if (user.role !== 'bodegas' && user.role !== 'operaciones' && user.role !== 'gerencia' && user.role !== 'admin') {
+      throw new Error('No tiene permisos para registrar ingresos en bodega.');
+    }
+
+    const bodegaNombre = input.bodegaId === 'BODEGA_1' ? 'Bodega Norte (GYE)' : 'Bodega Sur (Puerto Marítimo)';
+    const maxItemNum = this.warehouseItems().reduce((max, i) => {
+      const m = /^KAR-(\d+)$/i.exec(i.id);
+      return m ? Math.max(max, Number(m[1])) : max;
+    }, 104);
+    const id = `KAR-${maxItemNum + 1}`;
+    const today = this.referenceDate.toISOString().split('T')[0];
+
+    const newItem: WarehouseItem = {
+      id,
+      bodegaId: input.bodegaId,
+      bodegaNombre,
+      clienteId: input.clienteId,
+      cliente: input.cliente,
+      refArlogs: input.refArlogs.trim().toUpperCase() || 'DIRECTO-BOD',
+      ordenCompra: input.ordenCompra.trim().toUpperCase(),
+      descripcion: input.descripcion.trim(),
+      cantidadInicial: Number(input.cantidad),
+      cantidadDisponible: Number(input.cantidad),
+      unidad: input.unidad.trim() || 'Bultos',
+      pesoKg: Number(input.pesoKg) || 0,
+      fechaIngreso: today,
+      ubicacionRack: input.ubicacionRack.trim().toUpperCase() || 'RACK-01',
+      estado: 'EN_BODEGA'
+    };
+
+    this.warehouseItems.update(list => [newItem, ...list]);
+    this.recordWarehouseMovement({
+      itemId: id,
+      bodegaNombre,
+      tipo: 'INGRESO',
+      cantidad: newItem.cantidadInicial,
+      guiaRemision: `ING-${input.bodegaId === 'BODEGA_1' ? 'B1' : 'B2'}-${maxItemNum + 1}`,
+      ordenCompra: newItem.ordenCompra,
+      cliente: newItem.cliente,
+      descripcion: newItem.descripcion,
+      responsable: user.nombre,
+      observacion: input.observacion?.trim() || 'Conteo físico e ingreso a Kardex'
+    });
+
+    this.auditService.record({
+      usuario: user.nombre,
+      email: user.email,
+      rol: user.role,
+      categoria: 'BODEGA_KARDEX',
+      entidad: `${id} (${newItem.ordenCompra})`,
+      accion: 'Ingreso físico a Bodega',
+      detalle: `${bodegaNombre} | ${newItem.cantidadInicial} ${newItem.unidad} | ${newItem.descripcion}`
+    });
+
+    return newItem;
+  }
+
+  // Operaciones 3 / Bodegas Kardex: Issue Guía de Remisión & deduct stock
+  dispatchWarehouseItem(input: {
+    itemId: string;
+    cantidadSalida: number;
+    guiaRemision: string;
+    transporteInland: string;
+    observacion?: string;
+  }): WarehouseItem {
+    const user = this.currentUser();
+    if (user.role !== 'bodegas' && user.role !== 'operaciones' && user.role !== 'gerencia' && user.role !== 'admin') {
+      throw new Error('No tiene permisos para emitir guías de remisión.');
+    }
+
+    const existing = this.warehouseItems().find(i => i.id === input.itemId);
+    if (!existing) throw new Error('Ítem de Kardex no encontrado.');
+
+    const qty = Number(input.cantidadSalida);
+    if (!qty || qty <= 0 || qty > existing.cantidadDisponible) {
+      throw new Error(`Cantidad inválida. Disponible actual: ${existing.cantidadDisponible} ${existing.unidad}.`);
+    }
+
+    const remision = input.guiaRemision.trim().toUpperCase();
+    if (!remision) {
+      throw new Error('Debe indicar el número de Guía de Remisión.');
+    }
+
+    let updatedItem!: WarehouseItem;
+    this.warehouseItems.update(list =>
+      list.map(i => {
+        if (i.id !== input.itemId) return i;
+        const remaining = i.cantidadDisponible - qty;
+        updatedItem = {
+          ...i,
+          cantidadDisponible: remaining,
+          estado: remaining === 0 ? 'DESPACHADO' : 'PARCIAL',
+          ultimaGuiaRemision: remision
+        };
+        return updatedItem;
+      })
+    );
+
+    this.recordWarehouseMovement({
+      itemId: existing.id,
+      bodegaNombre: existing.bodegaNombre,
+      tipo: 'SALIDA',
+      cantidad: qty,
+      guiaRemision: remision,
+      ordenCompra: existing.ordenCompra,
+      cliente: existing.cliente,
+      descripcion: existing.descripcion,
+      transporteInland: input.transporteInland.trim() || 'Inland Local',
+      responsable: user.nombre,
+      observacion: input.observacion?.trim() || 'Despacho con Guía de Remisión'
+    });
+
+    this.auditService.record({
+      usuario: user.nombre,
+      email: user.email,
+      rol: user.role,
+      categoria: 'BODEGA_KARDEX',
+      entidad: `${remision} (${existing.ordenCompra})`,
+      accion: 'Salida Kardex / Guía de Remisión',
+      detalle: `${existing.bodegaNombre} | Retiro: ${qty} ${existing.unidad} (Saldo: ${updatedItem.cantidadDisponible}) | ${input.transporteInland}`
+    });
+
+    return updatedItem;
+  }
+
+  private recordWarehouseMovement(m: Omit<WarehouseMovement, 'id' | 'fecha'>): void {
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const fecha = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const maxMov = this.warehouseMovements().reduce((max, x) => {
+      const match = /^MOV-(\d+)$/i.exec(x.id);
+      return match ? Math.max(max, Number(match[1])) : max;
+    }, 304);
+    this.warehouseMovements.update(list => [{ id: `MOV-${maxMov + 1}`, fecha, ...m }, ...list]);
+  }
+
   // Excel Export (Lazy-loaded SheetJS to keep initial startup fast)
   async exportToExcel(filteredJobs: ShipmentJob[]): Promise<void> {
     const user = this.currentUser();
+    const canSeeFinancials = user.role === 'gerencia' || user.role === 'admin' || user.role === 'contabilidad';
     const rows = filteredJobs.map(j => {
       const base: Record<string, any> = {
         'Ref ARLOGS': j.refArlogs,
@@ -656,6 +1044,13 @@ export class ShipmentService {
       // Only internal profiles see client name
       if (user.role !== 'cliente_a' && user.role !== 'cliente_b') {
         base['Cliente'] = j.cliente;
+      }
+      // Strictly never expose pricing/billing figures to Operaciones or Clients
+      if (canSeeFinancials) {
+        base['Venta Cotizada (USD)'] = j.valorVentaCotizado ?? 0;
+        base['Facturado Real (USD)'] = j.valorFacturadoReal ?? 'Pendiente';
+        base['Costo Real (USD)'] = j.costoReal ?? 'Pendiente';
+        base['Estado Cobro'] = j.estadoCobro ?? 'PENDIENTE_FACTURAR';
       }
       return base;
     });

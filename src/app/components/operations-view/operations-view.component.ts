@@ -559,8 +559,8 @@ export class OperationsViewComponent {
       const updated = this.shipmentService.updateJobMilestones(event.refArlogs, event.changes);
       this.selectedJob.set(null);
       this.toastService.success(
-        'Actualizado',
-        `Embarque ${updated.refArlogs} actualizado (${updated.estado}). Tiempos recalculados.`
+        'Actualizado — Cliente notificado',
+        `Embarque ${updated.refArlogs} (${updated.estado}) recalculado y reflejado en Portal Clientes.`
       );
     } catch (err: any) {
       this.toastService.error('Incorrecto', err?.message ?? 'No se pudo actualizar el embarque.');

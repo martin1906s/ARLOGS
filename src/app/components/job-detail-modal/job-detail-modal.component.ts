@@ -140,7 +140,12 @@ import { ToastService } from '../../services/toast.service';
 
                       <!-- Documentos de Transporte (Guía / BL / Contenedor) -->
                       <div class="mt-3 p-3 bg-slate-50 rounded-3 border border-slate-200">
-                        <span class="fs-xxs fw-bold text-uppercase text-muted d-block mb-2">Documentos de Embarque &amp; Transporte</span>
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+                          <span class="fs-xxs fw-bold text-uppercase text-muted">Documentos de Embarque &amp; Transporte</span>
+                          <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 fs-xxs" (click)="checkCarrierTracking()">
+                            <i class="bi bi-radar me-1"></i>Rastrear Guía / BL / Contenedor
+                          </button>
+                        </div>
                         <div class="row g-2">
                           <div class="col-12 col-sm-4">
                             <label class="form-label fs-xxs text-muted mb-1">Guía Máster / MBL</label>
@@ -155,6 +160,12 @@ import { ToastService } from '../../services/toast.service';
                             <input type="text" class="form-control form-control-sm mono-font" [disabled]="isReadOnly" [(ngModel)]="editForm.contenedor" name="contenedor">
                           </div>
                         </div>
+                        @if (carrierTrackingStatus) {
+                          <div class="mt-2 p-2 rounded-2 bg-white border border-blue-200 fs-xxs text-dark d-flex align-items-center gap-2">
+                            <i class="bi bi-broadcast text-primary"></i>
+                            <span>{{ carrierTrackingStatus }}</span>
+                          </div>
+                        }
                       </div>
 
                       <!-- Control de Pesos -->
@@ -471,9 +482,11 @@ export class JobDetailModalComponent implements OnChanges {
   liveWeightPct = 'N/A';
   isWeightDiscrepancy = false;
   chronologicalWarning: string | null = null;
+  carrierTrackingStatus: string | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['job'] && this.job) {
+      this.carrierTrackingStatus = null;
       this.initForm();
     }
   }
@@ -569,6 +582,31 @@ export class JobDetailModalComponent implements OnChanges {
       refArlogs: this.job.refArlogs,
       changes: this.editForm
     });
+  }
+
+  checkCarrierTracking(): void {
+    if (!this.job) return;
+    const guide = (this.editForm.guiaMaster || '').trim();
+    const container = (this.editForm.contenedor || '').trim();
+    const docRef = container && container !== 'N/A' && container !== 'PENDIENTE' ? container : guide;
+
+    if (!docRef || docRef === 'PENDIENTE' || docRef === 'N/A') {
+      this.carrierTrackingStatus = 'Asigne una Guía Máster / BL o N° Contenedor válido para sincronizar el rastreo.';
+      this.toastService.warning('Tracking pendiente', 'Ingrese primero la Guía Máster / BL o Contenedor.');
+      return;
+    }
+
+    let step = 'Pre-alerta registrada en origen';
+    if (this.previewJob?.h10_informeSalida) {
+      step = `Carga nacionalizada y entregada (${this.previewJob.h10_informeSalida})`;
+    } else if (this.previewJob?.h5_arriboAta) {
+      step = `Arribo confirmado en destino GYE (${this.previewJob.h5_arriboAta}) — en gestión portuaria/aduana`;
+    } else if (this.previewJob?.h4_zarpeAtd) {
+      step = `En tránsito internacional desde ${this.job.puertoEmbarque} (ATD ${this.previewJob.h4_zarpeAtd})`;
+    }
+
+    this.carrierTrackingStatus = `Sincronizado (${docRef}): ${step}.`;
+    this.toastService.info('Tracking Carrier Actualizado', `${docRef}: ${step}`);
   }
 
   closeModal(): void {

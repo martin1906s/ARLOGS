@@ -4,6 +4,8 @@ import { HeaderComponent } from './components/header/header.component';
 import { ExecutiveDashboardComponent } from './components/executive-dashboard/executive-dashboard.component';
 import { OperationsViewComponent } from './components/operations-view/operations-view.component';
 import { PricingViewComponent } from './components/pricing-view/pricing-view.component';
+import { BillingViewComponent } from './components/billing-view/billing-view.component';
+import { WarehouseViewComponent } from './components/warehouse-view/warehouse-view.component';
 import { ClientPortalComponent } from './components/client-portal/client-portal.component';
 import { AdminComponent } from './components/admin/admin.component';
 import { LoginComponent } from './components/login/login.component';
@@ -21,6 +23,8 @@ import { ScreenId } from './models/shipment.model';
     ExecutiveDashboardComponent,
     OperationsViewComponent,
     PricingViewComponent,
+    BillingViewComponent,
+    WarehouseViewComponent,
     ClientPortalComponent,
     AdminComponent,
     LoginComponent,

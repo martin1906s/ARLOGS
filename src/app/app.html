@@ -43,6 +43,16 @@
                 <app-pricing-view></app-pricing-view>
               }
             }
+            @case ('facturacion') {
+              @defer (on immediate) {
+                <app-billing-view></app-billing-view>
+              }
+            }
+            @case ('bodegas') {
+              @defer (on immediate) {
+                <app-warehouse-view></app-warehouse-view>
+              }
+            }
             @case ('cliente') {
               @defer (on immediate) {
                 <app-client-portal></app-client-portal>

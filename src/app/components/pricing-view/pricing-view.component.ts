@@ -106,6 +106,7 @@ import { Quotation, ServiceType, ServicePrefix } from '../../models/shipment.mod
                 <th>Incoterm</th>
                 <th>Órdenes de Compra</th>
                 <th>Aduana ARLOGS</th>
+                <th class="text-end">Cotizado / Profit</th>
                 <th>Estado</th>
                 <th>Referencia</th>
                 <th class="text-end">Acciones</th>
@@ -113,6 +114,8 @@ import { Quotation, ServiceType, ServicePrefix } from '../../models/shipment.mod
             </thead>
             <tbody>
               @for (q of filteredQuotations(); track q.id) {
+                @let profitEst = (q.valorVentaCotizado ?? 0) - (q.costoEstimadoCotizado ?? 0);
+                @let riskFlow = (q.valorVentaCotizado ?? 0) >= 5000 && (q.plazoPagoDias ?? 15) >= 30;
                 <tr>
                   <td>
                     <span class="badge bg-slate-900 text-info mono-font fs-xs">{{ q.id }}</span>
@@ -137,6 +140,17 @@ import { Quotation, ServiceType, ServicePrefix } from '../../models/shipment.mod
                           [class.text-slate-500]="q.aduanaPorArlogs !== 'SI'">
                       {{ q.aduanaPorArlogs }}
                     </span>
+                  </td>
+                  <td class="text-end mono-font text-nowrap">
+                    <div class="fw-bold text-dark fs-xs">\${{ (q.valorVentaCotizado ?? 0) | number:'1.0-0' }}</div>
+                    <div class="fs-xxs" [class.text-success]="profitEst > 0" [class.text-muted]="profitEst <= 0">
+                      Profit: \${{ profitEst | number:'1.0-0' }} &bull; {{ q.plazoPagoDias ?? 15 }}d
+                    </div>
+                    @if (riskFlow) {
+                      <span class="badge bg-warning text-dark fs-xxs mt-1" title="Flete alto a crédito 30+ días afecta flujo de caja">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Alerta Flujo
+                      </span>
+                    }
                   </td>
                   <td>
                     @if (q.estado === 'APROBADA') {
@@ -189,7 +203,7 @@ import { Quotation, ServiceType, ServicePrefix } from '../../models/shipment.mod
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="11" class="text-center py-4 text-muted">
+                  <td colspan="12" class="text-center py-4 text-muted">
                     <i class="bi bi-search fs-3 d-block mb-1"></i>
                     No se encontraron cotizaciones con los filtros aplicados.
                   </td>
@@ -280,6 +294,35 @@ import { Quotation, ServiceType, ServicePrefix } from '../../models/shipment.mod
                         <option value="N/A">N/A (Inland)</option>
                       </select>
                     </div>
+
+                    <div class="col-4">
+                      <label class="form-label fs-xs fw-bold text-dark">Tarifa Venta (USD) *</label>
+                      <input type="number" min="0" step="10" class="form-control mono-font" [(ngModel)]="quoteForm.valorVentaCotizado" name="valorVentaCotizado" required>
+                    </div>
+
+                    <div class="col-4">
+                      <label class="form-label fs-xs fw-bold text-dark">Costo Estimado (USD) *</label>
+                      <input type="number" min="0" step="10" class="form-control mono-font" [(ngModel)]="quoteForm.costoEstimadoCotizado" name="costoEstimadoCotizado" required>
+                    </div>
+
+                    <div class="col-4">
+                      <label class="form-label fs-xs fw-bold text-dark">Plazo Crédito (días)</label>
+                      <select class="form-select mono-font" [(ngModel)]="quoteForm.plazoPagoDias" name="plazoPagoDias">
+                        <option [ngValue]="0">Contado (0d)</option>
+                        <option [ngValue]="15">15 días</option>
+                        <option [ngValue]="30">30 días</option>
+                        <option [ngValue]="45">45 días</option>
+                      </select>
+                    </div>
+
+                    @if (quoteForm.valorVentaCotizado >= 5000 && quoteForm.plazoPagoDias >= 30) {
+                      <div class="col-12">
+                        <div class="alert alert-warning py-2 px-3 fs-xs mb-0">
+                          <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                          <strong>Alerta de flujo de caja:</strong> Flete elevado (\${{ quoteForm.valorVentaCotizado }}) con crédito a {{ quoteForm.plazoPagoDias }} días puede comprometer liquidez operativa; revise tarifa antes de aprobar.
+                        </div>
+                      </div>
+                    }
 
                   </div>
                 </div>
@@ -385,7 +428,10 @@ export class PricingViewComponent {
       puertoEmbarque: '',
       incoterm: 'FCA',
       ordenesCompraStr: 'OC-5001',
-      aduanaPorArlogs: 'SI' as 'SI' | 'NO' | 'N/A'
+      aduanaPorArlogs: 'SI' as 'SI' | 'NO' | 'N/A',
+      valorVentaCotizado: 2200,
+      costoEstimadoCotizado: 1750,
+      plazoPagoDias: 15
     };
   }
 
@@ -414,7 +460,10 @@ export class PricingViewComponent {
       puertoEmbarque: q.puertoEmbarque,
       incoterm: q.incoterm,
       ordenesCompraStr: q.ordenesCompra.join(', '),
-      aduanaPorArlogs: q.aduanaPorArlogs
+      aduanaPorArlogs: q.aduanaPorArlogs,
+      valorVentaCotizado: q.valorVentaCotizado ?? 2200,
+      costoEstimadoCotizado: q.costoEstimadoCotizado ?? 1750,
+      plazoPagoDias: q.plazoPagoDias ?? 15
     };
     this.showQuoteModal = true;
   }
@@ -462,7 +511,10 @@ export class PricingViewComponent {
           puertoEmbarque: this.quoteForm.puertoEmbarque.trim().toUpperCase(),
           incoterm: this.quoteForm.incoterm,
           ordenesCompra: ocs,
-          aduanaPorArlogs: this.quoteForm.aduanaPorArlogs
+          aduanaPorArlogs: this.quoteForm.aduanaPorArlogs,
+          valorVentaCotizado: Number(this.quoteForm.valorVentaCotizado) || 0,
+          costoEstimadoCotizado: Number(this.quoteForm.costoEstimadoCotizado) || 0,
+          plazoPagoDias: Number(this.quoteForm.plazoPagoDias) || 0
         });
         this.showQuoteModal = false;
         this.toastService.success('Actualizado', `Cotización ${updated.id} modificada correctamente.`);
@@ -478,7 +530,10 @@ export class PricingViewComponent {
           incoterm: this.quoteForm.incoterm,
           ordenesCompra: ocs,
           aduanaPorArlogs: this.quoteForm.aduanaPorArlogs,
-          fechaCotizacion: new Date().toISOString().split('T')[0]
+          fechaCotizacion: new Date().toISOString().split('T')[0],
+          valorVentaCotizado: Number(this.quoteForm.valorVentaCotizado) || 0,
+          costoEstimadoCotizado: Number(this.quoteForm.costoEstimadoCotizado) || 0,
+          plazoPagoDias: Number(this.quoteForm.plazoPagoDias) || 0
         });
         this.showQuoteModal = false;
         this.toastService.success('Correcto — Creado', `Cotización ${created.id} emitida para ${created.cliente}.`);

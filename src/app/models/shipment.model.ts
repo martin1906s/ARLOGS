@@ -1,7 +1,15 @@
 export type ServiceType = 'AEREO' | 'FCL' | 'LCL' | 'CUSTOMS' | 'COURIER' | 'INLAND';
 export type ServicePrefix = 'A' | 'F' | 'L' | 'C' | 'AC' | 'I';
-export type UserRole = 'admin' | 'pricing' | 'operaciones' | 'gerencia' | 'cliente_a' | 'cliente_b';
-export type ScreenId = 'gerencia' | 'operaciones' | 'pricing' | 'cliente' | 'admin';
+export type UserRole =
+  | 'admin'
+  | 'gerencia'
+  | 'operaciones'
+  | 'pricing'
+  | 'contabilidad'
+  | 'bodegas'
+  | 'cliente_a'
+  | 'cliente_b';
+export type ScreenId = 'gerencia' | 'operaciones' | 'pricing' | 'facturacion' | 'bodegas' | 'cliente' | 'admin';
 export type JobStatus = 'ABIERTO' | 'REVISAR' | 'CERRADO' | 'N/A';
 
 export interface Quotation {
@@ -19,6 +27,10 @@ export interface Quotation {
   fechaCotizacion: string;
   estado: 'PENDIENTE' | 'APROBADA';
   refArlogsGenerada?: string;
+  // Información comercial exclusiva de Pricing / Contabilidad / Gerencia (nunca visible en Operaciones)
+  valorVentaCotizado?: number;
+  costoEstimadoCotizado?: number;
+  plazoPagoDias?: number;
 }
 
 export interface ShipmentJob {
@@ -57,6 +69,16 @@ export interface ShipmentJob {
   regimenAduana?: string;
   distritoAduana?: string;
   aforoAduana?: string;
+
+  // Datos comerciales y facturación (ocultos en Operaciones por regla de negocio)
+  valorVentaCotizado?: number;
+  costoEstimadoCotizado?: number;
+  plazoPagoDias?: number;
+  facturaNumero?: string;
+  valorFacturadoReal?: number;
+  costoReal?: number;
+  estadoCobro?: 'PENDIENTE_FACTURAR' | 'FACTURADA' | 'COBRADA' | 'VENCIDA';
+  fechaFactura?: string;
 
   // Métricas calculadas
   diasRespuestaShipper?: number | 'N/A';
@@ -106,8 +128,10 @@ export interface ScreenDefinition {
 
 export const SCREEN_DEFINITIONS: ScreenDefinition[] = [
   { id: 'gerencia', label: 'Gerencia', icon: 'bi-pie-chart-fill', description: 'Dashboard ejecutivo, KPIs, cuellos de botella y umbral SLA' },
-  { id: 'operaciones', label: 'Operaciones', icon: 'bi-layers-fill', description: 'Control de embarques, edición de hitos H1-H10 y pesos' },
-  { id: 'pricing', label: 'Pricing', icon: 'bi-tag-fill', description: 'Cotizaciones QR, aprobación comercial y activación ARLOGS' },
+  { id: 'operaciones', label: 'Operaciones', icon: 'bi-layers-fill', description: 'Control de embarques, edición de hitos H1-H10 y pesos (sin precios)' },
+  { id: 'pricing', label: 'Pricing', icon: 'bi-tag-fill', description: 'Cotizaciones QR, tarifas, aprobación comercial y activación ARLOGS' },
+  { id: 'facturacion', label: 'Facturación', icon: 'bi-receipt-cutoff', description: 'Contabilidad: cotizado vs facturado real, profit y control de cobros' },
+  { id: 'bodegas', label: 'Bodegas Kardex', icon: 'bi-building-fill-gear', description: 'Operaciones 3: inventario Kardex (2 almacenes) y guías de remisión' },
   { id: 'cliente', label: 'Portal Clientes', icon: 'bi-building', description: 'Seguimiento aislado por empresa cliente y órdenes de compra' },
   { id: 'admin', label: 'Administración', icon: 'bi-shield-lock-fill', description: 'CRUD de usuarios, asignación de roles y matriz de accesos' }
 ];
@@ -131,42 +155,64 @@ export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
       'Asignar roles operativos o de cliente y configurar permisos por pantalla',
       'Auditar modificaciones de fechas H1-H10, umbrales SLA y sesiones'
     ],
-    defaultScreens: ['admin', 'gerencia', 'operaciones', 'pricing', 'cliente']
+    defaultScreens: ['admin', 'gerencia', 'operaciones', 'pricing', 'facturacion', 'bodegas', 'cliente']
   },
   gerencia: {
     role: 'gerencia',
-    label: 'Gerencia',
-    summary: 'Supervisión estratégica de tiempos, alertas SLA y atribución de demoras.',
+    label: 'Gerencia General',
+    summary: 'Supervisión estratégica global: tiempos, SLA, proveedores, auditoría y profit.',
     tasks: [
       'Configurar el umbral dinámico de alerta (días abiertos)',
-      'Monitorear tiempos promedio por tramo y modalidad',
-      'Identificar cuellos de botella entre Shipper, Aduana y ARLOGS',
-      'Consultar operación global y exportar reportes gerenciales'
+      'Comparar desempeño por proveedor (shipper) y detectar demoras',
+      'Revisar cotizado vs facturado real y profit sin depender de Excel',
+      'Auditar cambios manuales de hitos H1-H10 y exportar reportes'
     ],
-    defaultScreens: ['gerencia', 'operaciones', 'pricing']
+    defaultScreens: ['gerencia', 'operaciones', 'pricing', 'facturacion', 'bodegas', 'cliente']
   },
   operaciones: {
     role: 'operaciones',
     label: 'Operaciones',
-    summary: 'Ejecución y trazabilidad diaria de los 10 hitos operativos por embarque.',
+    summary: 'Ejecución diaria de hitos H1-H10, tracking y pesos (sin acceso a precios ni tarifas).',
     tasks: [
       'Registrar y actualizar fechas de hitos H1 a H10',
       'Controlar peso de origen vs. peso recibido en destino',
-      'Completar metadatos aduaneros (régimen, distrito, aforo)',
-      'Gestionar alertas de embarques marcados como REVISAR'
+      'Consultar tracking por guía máster / contenedor y notificar al cliente',
+      'Operación estrictamente aislada de costos, tarifas o facturación'
     ],
-    defaultScreens: ['operaciones', 'gerencia']
+    defaultScreens: ['operaciones']
   },
   pricing: {
     role: 'pricing',
     label: 'Pricing',
-    summary: 'Gestión comercial de cotizaciones QR y apertura de referencias operativas.',
+    summary: 'Gestión comercial de cotizaciones QR, costos/tarifas y apertura ARLOGS (no edita ni ve fechas).',
     tasks: [
-      'Emitir nuevas cotizaciones con código único QR',
-      'Aprobar cotizaciones aceptadas por el cliente',
-      'Generar automáticamente referencias únicas ARLOGS (A, F, L, C, AC, I)'
+      'Emitir cotizaciones con código único QR sin duplicidad',
+      'Definir tarifa de venta, costo estimado y alerta de flujo por crédito',
+      'Aprobar cotizaciones para activar referencias A/F/L/C/AC/I automáticamente'
     ],
-    defaultScreens: ['pricing', 'operaciones']
+    defaultScreens: ['pricing']
+  },
+  contabilidad: {
+    role: 'contabilidad',
+    label: 'Contabilidad / Facturación',
+    summary: 'Emite facturas y gestiona cobros consolidando datos heredados de Pricing y Operaciones.',
+    tasks: [
+      'Facturar referencias activas sin volver a digitar datos comerciales u operativos',
+      'Comparar valor cotizado vs. facturado real y validar profit por embarque',
+      'Controlar estado de cobros y alertas de flujo de caja a 30+ días'
+    ],
+    defaultScreens: ['facturacion']
+  },
+  bodegas: {
+    role: 'bodegas',
+    label: 'Operaciones 3 (Bodegas)',
+    summary: 'Control Kardex físico de 2 bodegas arrendadas y transporte interno sin costeo de inventario.',
+    tasks: [
+      'Registrar ingresos físicos por conteo en Bodega Norte y Bodega Sur',
+      'Controlar saldos disponibles vinculados por Cliente y Orden de Compra',
+      'Emitir Guías de Remisión para despachos y movimientos locales (Inland)'
+    ],
+    defaultScreens: ['bodegas']
   },
   cliente_a: {
     role: 'cliente_a',
@@ -195,10 +241,49 @@ export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
 export type AuditCategory =
   | 'OPERACION_HITOS'
   | 'PRICING_QR'
+  | 'FACTURACION'
+  | 'BODEGA_KARDEX'
   | 'GERENCIA_SLA'
   | 'CREDENCIAL_CLIENTE'
   | 'SEGURIDAD_ROLES'
   | 'SESION';
+
+export type WarehouseId = 'BODEGA_1' | 'BODEGA_2';
+
+export interface WarehouseItem {
+  id: string;
+  bodegaId: WarehouseId;
+  bodegaNombre: string;
+  clienteId: string;
+  cliente: string;
+  refArlogs: string;
+  ordenCompra: string;
+  descripcion: string;
+  cantidadInicial: number;
+  cantidadDisponible: number;
+  unidad: string;
+  pesoKg: number;
+  fechaIngreso: string;
+  ubicacionRack: string;
+  estado: 'EN_BODEGA' | 'PARCIAL' | 'DESPACHADO';
+  ultimaGuiaRemision?: string;
+}
+
+export interface WarehouseMovement {
+  id: string;
+  itemId: string;
+  bodegaNombre: string;
+  tipo: 'INGRESO' | 'SALIDA';
+  cantidad: number;
+  guiaRemision: string;
+  ordenCompra: string;
+  cliente: string;
+  descripcion: string;
+  transporteInland?: string;
+  responsable: string;
+  fecha: string;
+  observacion: string;
+}
 
 export interface AuditEntry {
   id: string;
@@ -272,7 +357,29 @@ export const DEMO_USERS: RoleUser[] = [
     activo: true,
     cargo: 'Especialista de Pricing y Cotizaciones',
     avatarIcon: 'bi-tag-fill',
-    descripcion: 'Genera cotizaciones QR, aprueba pedidos y activa códigos ARLOGS.'
+    descripcion: 'Genera cotizaciones QR, define costos/tarifas y activa códigos ARLOGS.'
+  },
+  {
+    id: 'user-contabilidad',
+    role: 'contabilidad',
+    nombre: 'Dra. Valeria León',
+    email: 'conta@arlogs.com',
+    password: 'conta123',
+    activo: true,
+    cargo: 'Jefa de Contabilidad y Facturación',
+    avatarIcon: 'bi-receipt-cutoff',
+    descripcion: 'Emite facturas desde Pricing/Operaciones, controla cobros y cotizado vs facturado.'
+  },
+  {
+    id: 'user-bodegas',
+    role: 'bodegas',
+    nombre: 'Jorge Zambrano',
+    email: 'bodegas@arlogs.com',
+    password: 'bodega123',
+    activo: true,
+    cargo: 'Coordinador Operaciones 3 (Bodegas)',
+    avatarIcon: 'bi-building-fill-gear',
+    descripcion: 'Control Kardex de 2 bodegas arrendadas y emisión de guías de remisión.'
   },
   {
     id: 'user-cliente-a',

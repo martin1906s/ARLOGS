@@ -410,6 +410,8 @@ export class LoginComponent implements AfterViewInit, OnDestroy {
     { role: 'gerencia', label: 'Gerencia', email: 'gerencia@arlogs.com', icon: 'bi-speedometer2' },
     { role: 'operaciones', label: 'Operaciones', email: 'operaciones@arlogs.com', icon: 'bi-gear-wide-connected' },
     { role: 'pricing', label: 'Pricing', email: 'pricing@arlogs.com', icon: 'bi-tag-fill' },
+    { role: 'contabilidad', label: 'Contabilidad', email: 'conta@arlogs.com', icon: 'bi-receipt-cutoff' },
+    { role: 'bodegas', label: 'Bodegas Op.3', email: 'bodegas@arlogs.com', icon: 'bi-building-fill-gear' },
     { role: 'cliente_a', label: 'Industrias Andinas', email: 'andinas@arlogs.com', icon: 'bi-building-fill' },
     { role: 'cliente_b', label: 'Comercial Pacífico', email: 'pacifico@arlogs.com', icon: 'bi-box-seam-fill' }
   ];

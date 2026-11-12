@@ -479,6 +479,8 @@ interface UserFormState {
                 <option value="ALL">Todas las categorías</option>
                 <option value="OPERACION_HITOS">Cambios de Hitos / Fechas</option>
                 <option value="PRICING_QR">Cotizaciones QR</option>
+                <option value="FACTURACION">Facturación y Cobros</option>
+                <option value="BODEGA_KARDEX">Bodegas Kardex / Remisión</option>
                 <option value="GERENCIA_SLA">Umbral SLA Gerencia</option>
                 <option value="CREDENCIAL_CLIENTE">Credenciales a Clientes</option>
                 <option value="SEGURIDAD_ROLES">Roles y Usuarios</option>
@@ -750,7 +752,16 @@ export class AdminComponent {
   readonly auditLogs = this.auditService.logs;
   readonly currentUser = this.authService.currentUser;
   readonly screens = this.authService.screenDefinitions;
-  readonly roleOrder: UserRole[] = ['admin', 'gerencia', 'operaciones', 'pricing', 'cliente_a', 'cliente_b'];
+  readonly roleOrder: UserRole[] = [
+    'admin',
+    'gerencia',
+    'operaciones',
+    'pricing',
+    'contabilidad',
+    'bodegas',
+    'cliente_a',
+    'cliente_b'
+  ];
 
   activeSection = signal<'users' | 'clients' | 'roles' | 'audit'>('users');
   modalError = signal<string | null>(null);
@@ -852,6 +863,8 @@ export class AdminComponent {
       case 'gerencia': return 'bg-primary bg-opacity-10 text-primary border-primary border-opacity-25';
       case 'operaciones': return 'bg-info bg-opacity-10 text-info border-info border-opacity-25';
       case 'pricing': return 'bg-warning bg-opacity-10 text-warning border-warning border-opacity-25';
+      case 'contabilidad': return 'bg-secondary bg-opacity-10 text-dark border-secondary border-opacity-25';
+      case 'bodegas': return 'bg-primary bg-opacity-10 text-primary border-primary border-opacity-25';
       case 'cliente_a':
       case 'cliente_b':
         return 'bg-success bg-opacity-10 text-success border-success border-opacity-25';
@@ -862,6 +875,8 @@ export class AdminComponent {
     switch (cat) {
       case 'OPERACION_HITOS': return 'bg-info bg-opacity-10 text-info border-info border-opacity-25';
       case 'PRICING_QR': return 'bg-primary bg-opacity-10 text-primary border-primary border-opacity-25';
+      case 'FACTURACION': return 'bg-success bg-opacity-10 text-success border-success border-opacity-25';
+      case 'BODEGA_KARDEX': return 'bg-warning bg-opacity-10 text-warning border-warning border-opacity-25';
       case 'GERENCIA_SLA': return 'bg-warning bg-opacity-10 text-warning border-warning border-opacity-25';
       case 'CREDENCIAL_CLIENTE': return 'bg-success bg-opacity-10 text-success border-success border-opacity-25';
       case 'SEGURIDAD_ROLES': return 'bg-dark text-white border-dark';

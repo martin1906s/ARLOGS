@@ -35,6 +35,8 @@ export class AuthService {
     gerencia: [...ROLE_DEFINITIONS.gerencia.defaultScreens],
     operaciones: [...ROLE_DEFINITIONS.operaciones.defaultScreens],
     pricing: [...ROLE_DEFINITIONS.pricing.defaultScreens],
+    contabilidad: [...ROLE_DEFINITIONS.contabilidad.defaultScreens],
+    bodegas: [...ROLE_DEFINITIONS.bodegas.defaultScreens],
     cliente_a: [...ROLE_DEFINITIONS.cliente_a.defaultScreens],
     cliente_b: [...ROLE_DEFINITIONS.cliente_b.defaultScreens]
   });
@@ -176,6 +178,8 @@ export class AuthService {
     if (role === 'gerencia' && allowed.includes('gerencia')) return 'gerencia';
     if (role === 'operaciones' && allowed.includes('operaciones')) return 'operaciones';
     if (role === 'pricing' && allowed.includes('pricing')) return 'pricing';
+    if (role === 'contabilidad' && allowed.includes('facturacion')) return 'facturacion';
+    if (role === 'bodegas' && allowed.includes('bodegas')) return 'bodegas';
     if ((role === 'cliente_a' || role === 'cliente_b') && allowed.includes('cliente')) return 'cliente';
     return allowed[0];
   }
@@ -513,6 +517,10 @@ export class AuthService {
         return { avatarIcon: 'bi-gear-wide-connected' };
       case 'pricing':
         return { avatarIcon: 'bi-tag-fill' };
+      case 'contabilidad':
+        return { avatarIcon: 'bi-receipt-cutoff' };
+      case 'bodegas':
+        return { avatarIcon: 'bi-building-fill-gear' };
       case 'cliente_a': {
         const cid = explicitClientId || 'CLI-001';
         return {

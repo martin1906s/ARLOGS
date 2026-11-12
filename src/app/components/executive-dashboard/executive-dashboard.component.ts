@@ -277,31 +277,31 @@ import { ToastService } from '../../services/toast.service';
               <i class="bi bi-pie-chart text-muted"></i>
             </div>
 
-            <!-- Modern visual breakdown -->
+            <!-- Dynamic attribution computed from live shipments -->
             <div class="d-flex flex-column gap-2 fs-xs">
               
               <div class="p-2 px-3 rounded-3 bg-slate-50 border border-slate-200 d-flex align-items-center justify-content-between">
                 <div>
                   <span class="fw-semibold text-dark d-block">Línea de Transporte (Naviera / Aéreo)</span>
-                  <span class="text-muted fs-xxs">Tránsito en altamar o vuelo internacional</span>
+                  <span class="text-muted fs-xxs">Tránsito en altamar o vuelo internacional (H5 − H4)</span>
                 </div>
-                <span class="badge bg-blue-100 text-blue-800 mono-font fw-bold">~52% tiempo</span>
+                <span class="badge bg-blue-100 text-blue-800 mono-font fw-bold">{{ averages().attrLineaPct }}% tiempo</span>
               </div>
 
               <div class="p-2 px-3 rounded-3 bg-slate-50 border border-slate-200 d-flex align-items-center justify-content-between">
                 <div>
                   <span class="fw-semibold text-dark d-block">Proveedor / Shipper (Origen)</span>
-                  <span class="text-muted fs-xxs">Demora en alistamiento y entrega en puerto</span>
+                  <span class="text-muted fs-xxs">Alistamiento y entrega en puerto/origen (H4 − H1)</span>
                 </div>
-                <span class="badge bg-slate-200 text-slate-800 mono-font fw-bold">~28% tiempo</span>
+                <span class="badge bg-slate-200 text-slate-800 mono-font fw-bold">{{ averages().attrShipperPct }}% tiempo</span>
               </div>
 
               <div class="p-2 px-3 rounded-3 bg-slate-50 border border-slate-200 d-flex align-items-center justify-content-between">
                 <div>
-                  <span class="fw-semibold text-dark d-block">Trámite Aduanero & Pago Tributos</span>
-                  <span class="text-muted fs-xxs">Aforo, declaración y liquidación</span>
+                  <span class="fw-semibold text-dark d-block">Trámite Aduanero &amp; Liquidación</span>
+                  <span class="text-muted fs-xxs">Aforo, declaración y pago tributos (H9 − H7)</span>
                 </div>
-                <span class="badge bg-amber-100 text-amber-800 mono-font fw-bold">~14% tiempo</span>
+                <span class="badge bg-amber-100 text-amber-800 mono-font fw-bold">{{ averages().attrAduanaPct }}% tiempo</span>
               </div>
 
               <div class="p-2 px-3 rounded-3 bg-slate-50 border border-slate-200 d-flex align-items-center justify-content-between">
@@ -309,13 +309,92 @@ import { ToastService } from '../../services/toast.service';
                   <span class="fw-semibold text-dark d-block">Gestión Operativa ARLOGS</span>
                   <span class="text-muted fs-xxs">Coordinación, recepción e informe de salida</span>
                 </div>
-                <span class="badge bg-emerald-100 text-emerald-800 mono-font fw-bold">~6% tiempo</span>
+                <span class="badge bg-emerald-100 text-emerald-800 mono-font fw-bold">{{ averages().attrArlogsPct }}% tiempo</span>
               </div>
 
             </div>
           </div>
         </div>
 
+      </div>
+
+      <!-- Comparativa Financiera & Proveedores (Shipper Ranking) para Gerencia -->
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-lg-5">
+          <div class="card-executive p-3 h-100">
+            <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+              <div>
+                <h6 class="fw-bold mb-0 text-dark">Resumen Cotizado vs. Facturado</h6>
+                <span class="text-muted fs-xs">Visibilidad comercial consolidada (solo Gerencia)</span>
+              </div>
+              <i class="bi bi-cash-stack text-success"></i>
+            </div>
+            <div class="row g-2">
+              <div class="col-6">
+                <div class="p-2 px-3 rounded-3 bg-slate-50 border border-slate-200">
+                  <div class="fs-xxs text-muted text-uppercase fw-semibold">Cotizado Total</div>
+                  <div class="fs-5 fw-bold text-dark mono-font">\${{ commercialStats().cotizado | number:'1.0-0' }}</div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-2 px-3 rounded-3 bg-slate-50 border border-slate-200">
+                  <div class="fs-xxs text-muted text-uppercase fw-semibold">Facturado Real</div>
+                  <div class="fs-5 fw-bold text-primary mono-font">\${{ commercialStats().facturado | number:'1.0-0' }}</div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-2 px-3 rounded-3 bg-emerald-50 border border-emerald-200">
+                  <div class="fs-xxs text-emerald-800 text-uppercase fw-semibold">Profit Real</div>
+                  <div class="fs-5 fw-bold text-success mono-font">\${{ commercialStats().profitReal | number:'1.0-0' }}</div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-2 px-3 rounded-3 bg-amber-50 border border-amber-200">
+                  <div class="fs-xxs text-amber-800 text-uppercase fw-semibold">Pend. Facturar</div>
+                  <div class="fs-5 fw-bold text-amber-700 mono-font">{{ commercialStats().pendientes }} emb.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-7">
+          <div class="card-executive p-3 h-100">
+            <div class="d-flex align-items-center justify-content-between mb-2 border-bottom pb-2">
+              <div>
+                <h6 class="fw-bold mb-0 text-dark">Comparativa de Tiempos por Proveedor (Shipper)</h6>
+                <span class="text-muted fs-xs">Identificación de proveedores lentos en origen vs. alternativas rápidas</span>
+              </div>
+              <i class="bi bi-bar-chart-steps text-primary"></i>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm table-arlogs align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Proveedor (Shipper)</th>
+                    <th>Ruta / Mod.</th>
+                    <th class="text-end">Emb.</th>
+                    <th class="text-end">Resp. H2−H1</th>
+                    <th class="text-end">Origen H4−H1</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (sp of shipperComparison(); track sp.shipper) {
+                    <tr>
+                      <td class="fw-semibold text-dark fs-xs">{{ sp.shipper }}</td>
+                      <td class="fs-xxs text-muted">{{ sp.origen }}</td>
+                      <td class="text-end mono-font fs-xs">{{ sp.count }}</td>
+                      <td class="text-end mono-font fs-xs">{{ sp.avgResp }} d</td>
+                      <td class="text-end mono-font fw-bold fs-xs" [class.text-danger]="sp.avgOrigen >= 10" [class.text-success]="sp.avgOrigen > 0 && sp.avgOrigen < 7">
+                        {{ sp.avgOrigen > 0 ? sp.avgOrigen + ' d' : 'N/A' }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Shipments with Review Alert Table -->
@@ -549,18 +628,74 @@ export class ExecutiveDashboardComponent {
     const cicloTotal = avgOf(list.map(j => j.diasCicloTotal));
 
     const maxCycle = Math.max(cicloTotal, 30);
+    const respShipperPct = Math.min(100, Math.round((respShipper / maxCycle) * 100));
+    const coordinacionOrigenPct = Math.min(100, Math.round((coordinacionOrigen / maxCycle) * 100));
+    const transitoPct = Math.min(100, Math.round((transito / maxCycle) * 100));
+    const aduanaPct = Math.min(100, Math.round((aduana / maxCycle) * 100));
+
+    const arlogsDays = Math.max(1.5, Math.round((cicloTotal - coordinacionOrigen - transito - aduana) * 10) / 10);
+    const denom = Math.max(1, coordinacionOrigen + transito + aduana + arlogsDays);
+    const attrLineaPct = Math.round((transito / denom) * 100);
+    const attrShipperPct = Math.round((coordinacionOrigen / denom) * 100);
+    const attrAduanaPct = Math.round((aduana / denom) * 100);
+    const attrArlogsPct = Math.max(1, 100 - attrLineaPct - attrShipperPct - attrAduanaPct);
 
     return {
       respShipper,
-      respShipperPct: Math.min(100, Math.round((respShipper / maxCycle) * 100)),
+      respShipperPct,
       coordinacionOrigen,
-      coordinacionOrigenPct: Math.min(100, Math.round((coordinacionOrigen / maxCycle) * 100)),
+      coordinacionOrigenPct,
       transito,
-      transitoPct: Math.min(100, Math.round((transito / maxCycle) * 100)),
+      transitoPct,
       aduana,
-      aduanaPct: Math.min(100, Math.round((aduana / maxCycle) * 100)),
-      cicloTotal
+      aduanaPct,
+      cicloTotal,
+      attrLineaPct,
+      attrShipperPct,
+      attrAduanaPct,
+      attrArlogsPct
     };
+  });
+
+  readonly commercialStats = computed(() => {
+    const list = this.jobs();
+    let cotizado = 0;
+    let facturado = 0;
+    let profitReal = 0;
+    let pendientes = 0;
+    for (const j of list) {
+      cotizado += j.valorVentaCotizado ?? 0;
+      if (j.valorFacturadoReal !== undefined) {
+        facturado += j.valorFacturadoReal;
+        profitReal += j.valorFacturadoReal - (j.costoReal ?? j.costoEstimadoCotizado ?? 0);
+      } else {
+        pendientes++;
+      }
+    }
+    return { cotizado, facturado, profitReal, pendientes };
+  });
+
+  readonly shipperComparison = computed(() => {
+    const map = new Map<string, { origen: string; count: number; resp: number[]; orig: number[] }>();
+    for (const j of this.jobs()) {
+      if (!j.shipper || j.shipper === 'N/A') continue;
+      const cur = map.get(j.shipper) ?? { origen: `${j.paisOrigen} (${j.servicio})`, count: 0, resp: [], orig: [] };
+      cur.count++;
+      if (typeof j.diasRespuestaShipper === 'number') cur.resp.push(j.diasRespuestaShipper);
+      if (typeof j.diasCoordinacionOrigen === 'number') cur.orig.push(j.diasCoordinacionOrigen);
+      map.set(j.shipper, cur);
+    }
+    const avg = (arr: number[]) => arr.length ? Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 10) / 10 : 0;
+    return Array.from(map.entries())
+      .map(([shipper, v]) => ({
+        shipper,
+        origen: v.origen,
+        count: v.count,
+        avgResp: avg(v.resp),
+        avgOrigen: avg(v.orig)
+      }))
+      .sort((a, b) => b.avgOrigen - a.avgOrigen || b.count - a.count)
+      .slice(0, 5);
   });
 
   readonly modalitySummary = computed(() => {
