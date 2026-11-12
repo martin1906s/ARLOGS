@@ -1,1338 +1,552 @@
-import {
-  Component,
-  ElementRef,
-  ViewChild,
-  AfterViewInit,
-  OnDestroy,
-  Output,
-  EventEmitter,
-  NgZone,
-  inject,
-  signal
-} from '@angular/core';
+import { Component, Output, EventEmitter, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import * as THREE from 'three';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
-import { ScreenId, UserRole } from '../../models/shipment.model';
-import {
-  createWaterNormalTexture,
-  createCloudLayerTexture,
-  createWaterFoamTexture,
-  createPortPierTextures,
-  createSkyDomeTexture
-} from '../../utils/procedural-textures';
-import {
-  createCoastalEnvironmentTexture,
-  buildDetailedCargoPlane,
-  buildDetailedContainer,
-  buildDetailedContainerShip,
-  disposeSceneResources,
-  DetailedContainerRefs,
-  DetailedPlaneRefs,
-  DetailedShipRefs
-} from '../../utils/realistic-cargo-models';
-
-type LoginAnimPhase =
-  | 'fly_in'
-  | 'drop_and_land'
-  | 'open_container'
-  | 'ready'
-  | 'error_shake'
-  | 'lock_and_depart';
+import { DEMO_USERS, ROLE_DEFINITIONS, ScreenId, UserRole } from '../../models/shipment.model';
 
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="login-viewport position-relative w-100 d-flex flex-column justify-content-between p-3 p-lg-4"
-         [class.fade-out-exit]="exitingToApp()">
-
-      <!-- Fullscreen 3D Scene -->
-      <div #canvasHost class="login-3d-canvas" [class.pointer-cursor]="shipHovered()"></div>
-
-      <!-- Top Brand Row (never overlaps card on small screens) -->
-      <div class="position-relative z-2 d-flex align-items-center justify-content-between gap-2 pointer-none mb-2">
-        <div class="d-flex align-items-center gap-2">
-          <div class="brand-crest d-flex align-items-center justify-content-center rounded-3 text-white flex-shrink-0">
-            <i class="bi bi-compass fs-5"></i>
-          </div>
-          <div>
-            <div class="text-white fw-bold font-heading lh-1" style="letter-spacing: -0.02em;">ARLOGS</div>
-            <div class="text-white-50 fs-xxs">Logística y Seguimiento Internacional</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Centered Glass Login Card -->
-      <div class="my-auto d-flex justify-content-center w-100 py-2">
-        <div class="login-glass-card position-relative z-3 w-100 p-3 p-sm-4"
-             [class.card-hidden]="!cardVisible()"
-             [class.card-visible]="cardVisible()"
-             [class.card-shake]="phase() === 'error_shake'"
-             [class.card-locked-exit]="phase() === 'lock_and_depart'">
-
-          <div class="text-center mb-3">
-            <div class="d-inline-flex align-items-center justify-content-center login-logo-badge mb-2">
-              <i class="bi bi-box-seam fs-4 text-amber"></i>
+    <div class="login-viewport d-flex flex-column flex-lg-row">
+      
+      <!-- LEFT COLUMN: Clean corporate authentication panel -->
+      <section class="auth-panel d-flex flex-column justify-content-center">
+        
+        <div class="auth-content-wrap">
+          
+          <!-- Brand Header -->
+          <header class="brand-header">
+            <div class="d-flex align-items-center gap-2">
+              <div class="brand-icon-box">
+                <i class="bi bi-box-seam-fill"></i>
+              </div>
+              <div class="d-flex flex-column">
+                <span class="brand-title">ARLOGS</span>
+                <span class="brand-caption">Global Freight &amp; Forwarding</span>
+              </div>
             </div>
-            <h4 class="text-white fw-bold font-heading mb-1 fs-5 fs-sm-4">Bienvenido a ARLOGS</h4>
-            <p class="text-slate-200 fs-xs mb-0">
-              Ingresa tus credenciales para acceder a tu panel
-            </p>
+          </header>
+
+          <!-- Main Auth Title (No unnecessary subtitles) -->
+          <div class="auth-heading-group">
+            <h1 class="auth-title">Iniciar Sesión</h1>
           </div>
 
+          <!-- Error Alert Banner (if any) -->
           @if (errorMessage()) {
-            <div class="alert-glass-error d-flex align-items-center gap-2 p-2 px-3 rounded-3 mb-3 fs-xs">
-              <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+            <div class="auth-error-banner d-flex align-items-center gap-2">
+              <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>
               <span>{{ errorMessage() }}</span>
             </div>
           }
 
-          <form (ngSubmit)="onSubmit()" class="d-flex flex-column gap-2 gap-sm-3">
-            <div>
-              <label class="form-label text-slate-200 fs-xs fw-medium mb-1">Correo electrónico</label>
-              <div class="input-group input-group-glass">
-                <span class="input-group-text">
-                  <i class="bi bi-envelope"></i>
-                </span>
+          <!-- Authentication Form -->
+          <form (ngSubmit)="onSubmit()" class="auth-form">
+            <!-- Email Input -->
+            <div class="form-group">
+              <label for="corporate-email" class="form-label-custom">Correo corporativo</label>
+              <div class="input-wrapper">
+                <i class="bi bi-envelope input-leading-icon"></i>
                 <input
+                  id="corporate-email"
                   type="email"
                   name="email"
                   [(ngModel)]="email"
-                  class="form-control"
-                  placeholder="correo@arlogs.com"
+                  class="input-field"
+                  placeholder="admin@arlogs.com"
                   autocomplete="username"
                   [disabled]="isAuthenticating()"
                   required>
               </div>
             </div>
 
-            <div>
-              <label class="form-label text-slate-200 fs-xs fw-medium mb-1">Contraseña</label>
-              <div class="input-group input-group-glass">
-                <span class="input-group-text">
-                  <i class="bi bi-lock"></i>
-                </span>
+            <!-- Password Input -->
+            <div class="form-group">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label for="corporate-password" class="form-label-custom mb-0">Contraseña</label>
+                <span class="security-hint">Protegido por RBAC</span>
+              </div>
+              <div class="input-wrapper">
+                <i class="bi bi-shield-lock input-leading-icon"></i>
                 <input
+                  id="corporate-password"
                   [type]="showPassword() ? 'text' : 'password'"
                   name="password"
                   [(ngModel)]="password"
-                  class="form-control"
-                  placeholder="••••••••"
+                  class="input-field"
+                  placeholder="••••••••••••"
                   autocomplete="current-password"
                   [disabled]="isAuthenticating()"
                   required>
                 <button
                   type="button"
-                  class="btn btn-eye"
+                  class="input-trailing-action"
                   (click)="showPassword.set(!showPassword())"
-                  tabindex="-1">
+                  tabindex="-1"
+                  aria-label="Mostrar u ocultar contraseña">
                   <i class="bi" [class.bi-eye]="!showPassword()" [class.bi-eye-slash]="showPassword()"></i>
                 </button>
               </div>
             </div>
 
-            <button type="submit" class="btn btn-login-primary w-100 py-2 fw-semibold mt-1" [disabled]="isAuthenticating()">
-              <span>{{ isAuthenticating() ? 'Verificando acceso...' : 'Ingresar' }}</span>
-              <i class="bi bi-arrow-right ms-2"></i>
+            <!-- Primary Action Button -->
+            <button
+              type="submit"
+              class="btn-auth-submit d-flex align-items-center justify-content-center gap-2"
+              [disabled]="isAuthenticating()">
+              <span>{{ isAuthenticating() ? 'Autenticando...' : 'Entrar a la Plataforma' }}</span>
+              <i class="bi bi-arrow-right"></i>
             </button>
           </form>
 
-          <div class="mt-3 pt-3 border-top border-white border-opacity-10">
-            <div class="text-slate-300 fs-xxs text-uppercase fw-semibold mb-2" style="letter-spacing: 0.06em;">
-              Ingreso directo por perfil
+          <!-- Acceso Rápido por Perfil -->
+          <div class="profiles-section">
+            <div class="profiles-header d-flex align-items-center justify-content-between">
+              <span class="profiles-title">Acceso rápido por perfil</span>
+              <span class="profiles-count">8 roles disponibles</span>
             </div>
 
-            <div class="row g-1 g-sm-2">
+            <div class="profiles-tag-cloud d-flex flex-wrap gap-2">
               @for (profile of quickProfiles; track profile.role) {
-                <div class="col-6">
-                  <button
-                    type="button"
-                    class="btn btn-profile-chip w-100 text-start d-flex align-items-center gap-2 py-1 px-2"
-                    [disabled]="isAuthenticating()"
-                    (click)="quickSignIn(profile.role)">
-                    <i class="bi {{ profile.icon }} text-amber fs-xs flex-shrink-0"></i>
-                    <div class="overflow-hidden lh-sm">
-                      <div class="text-white fs-xxs fw-semibold text-truncate">{{ profile.label }}</div>
-                      <div class="text-slate-300 text-truncate d-none d-sm-block" style="font-size: 0.64rem; opacity: 0.78;">{{ profile.email }}</div>
-                    </div>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  class="role-tag-btn"
+                  [disabled]="isAuthenticating()"
+                  (click)="quickSignIn(profile.role)">
+                  <span class="role-status-dot" [ngClass]="profile.badgeBg"></span>
+                  <span class="role-name">{{ profile.label }}</span>
+                </button>
               }
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Bottom Animation Controls (responsive flow, never collides with card) -->
-      <div class="position-relative z-3 d-flex align-items-center justify-content-between gap-2 mt-2" style="min-height: 32px;">
-        <div>
-          @if (phase() === 'ready' && !isAuthenticating()) {
-            <button type="button"
-                    class="btn btn-skip-intro px-3 py-1 rounded-pill fs-xxs fw-medium d-inline-flex align-items-center gap-1"
-                    (click)="replayIntro()">
-              <i class="bi bi-arrow-clockwise"></i> Ver animación
-            </button>
-          }
+      </section>
+
+      <!-- RIGHT COLUMN: Cinematic visual covering 100% of the section with imposing typography -->
+      <section class="visual-panel position-relative d-flex flex-column justify-content-center">
+        
+        <!-- Clean High-End Aerial Vessel Image (Spans 100% of Section, Full Bleed) -->
+        <img
+          src="assets/logistics-hero.jpg"
+          alt="ARLOGS Vessel Logistics"
+          class="visual-bg-image">
+
+        <!-- Smooth gradient scrim ensuring 100% typography legibility -->
+        <div class="visual-scrim"></div>
+
+        <!-- Center: Striking, unhurried typography in calm negative space -->
+        <div class="visual-typography-layout position-relative z-1">
+          
+          <!-- Category Eyebrow -->
+          <div class="type-eyebrow">
+            SISTEMA INTEGRAL DE LOGÍSTICA MULTIMODAL
+          </div>
+
+          <!-- Type 1: Imposing Extended Bold Sans -->
+          <h2 class="type-display-primary">
+            CONECTIVIDAD
+          </h2>
+          <h2 class="type-display-primary text-gold">
+            SIN FRONTERAS
+          </h2>
+
+          <!-- Type 2: Imposing Editorial Serif Italic -->
+          <p class="type-display-serif">
+            Trazabilidad de alta precisión en cada milla marítima y aérea.
+          </p>
+
         </div>
-        <div>
-          @if (phase() === 'fly_in' || phase() === 'drop_and_land' || phase() === 'open_container') {
-            <button type="button"
-                    class="btn btn-skip-intro px-3 py-1 rounded-pill fs-xxs fw-semibold"
-                    (click)="skipIntro()">
-              Saltar animación <i class="bi bi-chevron-double-right ms-1"></i>
-            </button>
-          }
-        </div>
-      </div>
+
+      </section>
 
     </div>
   `,
   styles: [`
+    /* ========================================================
+       FULLSCREEN VIEWPORT ARCHITECTURE
+       ======================================================== */
     .login-viewport {
+      width: 100vw;
+      min-height: 100vh;
       min-height: 100dvh;
+      background: #090e17;
       overflow-x: hidden;
+    }
+
+    /* ========================================================
+       LEFT PANEL: AUTHENTICATION (Human-Crafted, Breathable)
+       ======================================================== */
+    .auth-panel {
+      width: 100%;
+      background: #ffffff;
+      padding: clamp(2rem, 5vw, 4rem);
+      z-index: 2;
       overflow-y: auto;
-      background: linear-gradient(180deg, #09172b 0%, #1d4975 40%, #86a3b8 58%, #e3a76b 65%, #122d48 76%, #08182a 100%);
-      transition: opacity 0.55s ease, transform 0.65s ease;
     }
 
-    .fade-out-exit {
-      opacity: 0;
-      transform: scale(1.03);
+    @media (min-width: 992px) {
+      .auth-panel {
+        width: 42%;
+        min-width: 440px;
+        max-width: 540px;
+        min-height: 100vh;
+      }
+      .visual-panel {
+        width: 58%;
+        min-height: 100vh;
+      }
     }
 
-    .login-3d-canvas {
-      position: fixed;
-      inset: 0;
+    /* Brand Header */
+    .brand-header {
+      margin-bottom: 2rem;
+    }
+    .brand-icon-box {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: #0f172a;
+      color: #fed64d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+    .brand-title {
+      font-family: var(--font-heading);
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: 0.05em;
+      color: #0f172a;
+      line-height: 1.1;
+    }
+    .brand-caption {
+      font-size: 0.72rem;
+      color: #64748b;
+      letter-spacing: 0.02em;
+    }
+
+    /* Headings */
+    .auth-heading-group {
+      margin-bottom: 2rem;
+    }
+    .auth-title {
+      font-family: var(--font-heading);
+      font-size: clamp(1.75rem, 2.5vw, 2.2rem);
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      margin-bottom: 0;
+    }
+
+    /* Error Banner */
+    .auth-error-banner {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Form Fields */
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      margin-bottom: 2.25rem;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .form-label-custom {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 0.35rem;
+      letter-spacing: 0.01em;
+    }
+    .security-hint {
+      font-size: 0.7rem;
+      color: #94a3b8;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-leading-icon {
+      position: absolute;
+      left: 14px;
+      color: #94a3b8;
+      font-size: 0.95rem;
+      pointer-events: none;
+    }
+    .input-trailing-action {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 0.95rem;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .input-trailing-action:hover {
+      color: #334155;
+    }
+
+    .input-field {
+      width: 100%;
+      height: 44px;
+      padding: 0 40px 0 40px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      color: #0f172a;
+      transition: all 0.15s ease;
+    }
+    .input-field:focus {
+      outline: none;
+      background: #ffffff;
+      border-color: #0f172a;
+      box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+    }
+    .input-field::placeholder {
+      color: #cbd5e1;
+    }
+
+    /* Submit Button */
+    .btn-auth-submit {
+      width: 100%;
+      height: 46px;
+      background: #0f172a;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.92rem;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      margin-top: 0.5rem;
+    }
+    .btn-auth-submit:hover:not(:disabled) {
+      background: #1e293b;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+    }
+    .btn-auth-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* Profiles Tag Cloud */
+    .profiles-section {
+      padding-top: 1.5rem;
+      border-top: 1px solid #f1f5f9;
+    }
+    .profiles-header {
+      margin-bottom: 0.85rem;
+    }
+    .profiles-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #64748b;
+    }
+    .profiles-count {
+      font-size: 0.72rem;
+      color: #94a3b8;
+    }
+
+    .profiles-tag-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .role-tag-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .role-tag-btn:hover:not(:disabled) {
+      background: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+      transform: translateY(-1px);
+    }
+    .role-status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ========================================================
+       RIGHT PANEL: CINEMATIC HERO (100% Full Bleed Coverage)
+       ======================================================== */
+    .visual-panel {
+      flex: 1;
+      position: relative;
+      min-height: 520px;
+      padding: clamp(2.5rem, 6vw, 5rem);
+      background: #08101e;
+      overflow: hidden;
+    }
+
+    .visual-bg-image {
+      position: absolute;
+      top: 0;
+      left: 0;
       width: 100%;
       height: 100%;
+      object-fit: cover;
+      object-position: center center;
+      filter: brightness(0.88) contrast(1.05);
+      z-index: 0;
+    }
+
+    /* Scrim gradient: 100% full cover to guarantee high-contrast legibility */
+    .visual-scrim {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        140deg,
+        rgba(8, 16, 30, 0.85) 0%,
+        rgba(9, 21, 38, 0.62) 45%,
+        rgba(6, 12, 24, 0.78) 100%
+      );
       z-index: 1;
-      pointer-events: auto;
-      touch-action: pan-y;
     }
 
-    :host ::ng-deep canvas {
-      width: 100% !important;
-      height: 100% !important;
-      display: block;
+    /* Typography Box: positioned in calm negative space */
+    .visual-typography-layout {
+      max-width: 620px;
     }
 
-    .pointer-cursor { cursor: pointer; }
-    .pointer-none { pointer-events: none; }
-
-    .brand-crest {
-      width: 38px;
-      height: 38px;
-      background: linear-gradient(135deg, rgba(224, 159, 62, 0.92), rgba(180, 108, 28, 0.92));
-      border: 1px solid rgba(251, 191, 36, 0.45);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.32);
+    .type-eyebrow {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: #fed64d;
+      margin-bottom: 0.8rem;
     }
 
-    .btn-skip-intro {
-      background: rgba(15, 34, 58, 0.66);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+    /* Type 1: Extended Bold Display */
+    .type-display-primary {
+      font-family: 'Syncopate', sans-serif;
+      font-size: clamp(2rem, 3.8vw, 3.5rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: 0.02em;
+      color: #ffffff;
+      margin: 0;
+      text-transform: uppercase;
+    }
+    .text-gold {
+      color: #fed64d;
+    }
+
+    /* Type 2: Imposing Editorial Serif Italic */
+    .type-display-serif {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-style: italic;
+      font-weight: 600;
+      font-size: clamp(1.5rem, 2.6vw, 2.3rem);
+      line-height: 1.25;
       color: #e2e8f0;
-      transition: background-color 0.2s ease, color 0.2s ease;
-    }
-
-    .btn-skip-intro:hover {
-      background: rgba(24, 53, 88, 0.88);
-      color: #ffffff;
-    }
-
-    .login-glass-card {
-      max-width: min(408px, 100%);
-      background: rgba(14, 30, 52, 0.76);
-      backdrop-filter: blur(22px) saturate(140%);
-      -webkit-backdrop-filter: blur(22px) saturate(140%);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 18px;
-      box-shadow:
-        0 28px 65px -12px rgba(4, 12, 24, 0.75),
-        inset 0 1px 0 rgba(255, 255, 255, 0.22);
-      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.48s ease, border-color 0.25s ease;
-    }
-
-    .card-hidden {
-      opacity: 0;
-      transform: scale(0.62) translateY(24px);
-      pointer-events: none;
-    }
-
-    .card-visible {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-      pointer-events: auto;
-    }
-
-    .card-locked-exit {
-      opacity: 0;
-      transform: scale(0.5) translateY(8px);
-      pointer-events: none;
-    }
-
-    .card-shake {
-      border-color: rgba(239, 68, 68, 0.85) !important;
-      animation: card-vibrate 0.55s cubic-bezier(.36,.07,.19,.97) both;
-    }
-
-    @keyframes card-vibrate {
-      10%, 90% { transform: translate3d(-4px, 0, 0); }
-      20%, 80% { transform: translate3d(6px, 0, 0); }
-      30%, 50%, 70% { transform: translate3d(-8px, 0, 0); }
-      40%, 60% { transform: translate3d(8px, 0, 0); }
-    }
-
-    .login-logo-badge {
-      width: 46px;
-      height: 46px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, rgba(224, 159, 62, 0.22), rgba(29, 78, 137, 0.3));
-      border: 1px solid rgba(224, 159, 62, 0.45);
-      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
-    }
-
-    .text-amber { color: #f5b041; }
-    .text-slate-200 { color: #e2e8f0; }
-    .text-slate-300 { color: #cbd5e1; }
-
-    .input-group-glass .input-group-text {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      border-right: none;
-      color: #cbd5e1;
-      border-radius: 10px 0 0 10px;
-    }
-
-    .input-group-glass .form-control {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      border-left: none;
-      color: #ffffff;
-      font-size: 0.86rem;
-      padding: 8px 12px;
-    }
-
-    .input-group-glass .form-control::placeholder {
-      color: rgba(203, 213, 225, 0.62);
-    }
-
-    .input-group-glass .form-control:focus {
-      background: rgba(255, 255, 255, 0.14);
-      border-color: rgba(245, 176, 65, 0.72);
-      box-shadow: none;
-      color: #ffffff;
-    }
-
-    .input-group-glass .btn-eye {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      border-left: none;
-      color: #cbd5e1;
-      border-radius: 0 10px 10px 0;
-    }
-
-    .input-group-glass .btn-eye:hover { color: #ffffff; }
-
-    .btn-login-primary {
-      background: linear-gradient(135deg, #d98a2b 0%, #b86718 100%);
-      border: 1px solid rgba(251, 191, 36, 0.45);
-      color: #ffffff;
-      border-radius: 10px;
-      font-size: 0.88rem;
-      box-shadow: 0 10px 24px -4px rgba(184, 103, 24, 0.48);
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    .btn-login-primary:hover:not(:disabled) {
-      background: linear-gradient(135deg, #e59939 0%, #c9731e 100%);
-      color: #ffffff;
-      transform: translateY(-1px);
-    }
-
-    .btn-profile-chip {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 8px;
-      min-height: 36px;
-      transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
-    }
-
-    .btn-profile-chip:hover:not(:disabled) {
-      background: rgba(224, 159, 62, 0.18);
-      border-color: rgba(245, 176, 65, 0.55);
-      transform: translateY(-1px);
-    }
-
-    .alert-glass-error {
-      background: rgba(220, 38, 38, 0.24);
-      border: 1px solid rgba(248, 113, 113, 0.52);
-      color: #fecaca;
-    }
-
-    @media (max-width: 575.98px) {
-      .login-glass-card {
-        border-radius: 14px;
-      }
-      .login-logo-badge {
-        width: 40px;
-        height: 40px;
-        border-radius: 12px;
-      }
+      margin-top: 1.25rem;
+      margin-bottom: 0;
     }
   `]
 })
-export class LoginComponent implements AfterViewInit, OnDestroy {
-  @ViewChild('canvasHost', { static: true }) canvasHost!: ElementRef<HTMLDivElement>;
+export class LoginComponent {
   @Output() loginSuccess = new EventEmitter<ScreenId>();
 
   private authService = inject(AuthService);
   private toastService = inject(ToastService);
-  private ngZone = inject(NgZone);
 
   email = 'admin@arlogs.com';
-  password = '';
+  password = '••••••••••••';
   showPassword = signal(false);
+  isAuthenticating = signal(false);
   errorMessage = signal<string | null>(null);
-  shipHovered = signal<boolean>(false);
 
-  phase = signal<LoginAnimPhase>('fly_in');
-  cardVisible = signal<boolean>(false);
-  isAuthenticating = signal<boolean>(false);
-  exitingToApp = signal<boolean>(false);
-
-  readonly quickProfiles: { role: UserRole; label: string; email: string; icon: string }[] = [
-    { role: 'admin', label: 'Administrador', email: 'admin@arlogs.com', icon: 'bi-shield-lock-fill' },
-    { role: 'gerencia', label: 'Gerencia', email: 'gerencia@arlogs.com', icon: 'bi-speedometer2' },
-    { role: 'operaciones', label: 'Operaciones', email: 'operaciones@arlogs.com', icon: 'bi-gear-wide-connected' },
-    { role: 'pricing', label: 'Pricing', email: 'pricing@arlogs.com', icon: 'bi-tag-fill' },
-    { role: 'contabilidad', label: 'Contabilidad', email: 'conta@arlogs.com', icon: 'bi-receipt-cutoff' },
-    { role: 'bodegas', label: 'Bodegas Op.3', email: 'bodegas@arlogs.com', icon: 'bi-building-fill-gear' },
-    { role: 'cliente_a', label: 'Industrias Andinas', email: 'andinas@arlogs.com', icon: 'bi-building-fill' },
-    { role: 'cliente_b', label: 'Comercial Pacífico', email: 'pacifico@arlogs.com', icon: 'bi-box-seam-fill' }
+  // 8 Quick Access Roles
+  readonly quickProfiles: Array<{
+    role: UserRole;
+    label: string;
+    badgeBg: string;
+    scope: string;
+  }> = [
+    { role: 'admin', label: 'Admin', badgeBg: 'bg-slate-900', scope: 'Control total' },
+    { role: 'gerencia', label: 'Gerencia', badgeBg: 'bg-slate-800', scope: 'SLA y Profit' },
+    { role: 'operaciones', label: 'Operaciones', badgeBg: 'bg-slate-700', scope: 'Hitos H1-H10' },
+    { role: 'pricing', label: 'Pricing', badgeBg: 'bg-slate-600', scope: 'Cotizaciones' },
+    { role: 'contabilidad', label: 'Contabilidad', badgeBg: 'bg-slate-600', scope: 'Facturación' },
+    { role: 'bodegas', label: 'Bodegas', badgeBg: 'bg-slate-600', scope: 'Kardex y Guías' },
+    { role: 'cliente_a', label: 'Ind. Andinas', badgeBg: 'bg-slate-700', scope: 'Portal Cliente' },
+    { role: 'cliente_b', label: 'Com. Pacífico', badgeBg: 'bg-slate-700', scope: 'Portal Cliente' }
   ];
 
-  private scene!: THREE.Scene;
-  private camera!: THREE.PerspectiveCamera;
-  private renderer!: THREE.WebGLRenderer;
-  private animationFrameId: number | null = null;
-  private resizeObserver?: ResizeObserver;
-  private raycaster = new THREE.Raycaster();
-  private pointer = new THREE.Vector2(0, 0);
-
-  private planeRefs!: DetailedPlaneRefs;
-  private containerRefs!: DetailedContainerRefs;
-  private shipRefs!: DetailedShipRefs;
-  private leftShipRefs!: DetailedShipRefs;
-
-  private padlockGroup = new THREE.Group();
-  private shackleMesh!: THREE.Mesh;
-
-  private oceanMesh!: THREE.Mesh;
-  private oceanArray!: Float32Array;
-  private oceanColors!: Float32Array;
-  private oceanVertexCount = 0;
-  private oceanFrameSkip = false;
-  private waterNormalTex!: THREE.CanvasTexture;
-  private pierFoam!: THREE.Mesh;
-  private cloudLayers: { mesh: THREE.Mesh; speed: number; baseY: number; phase: number }[] = [];
-  private rippleRings: { mesh: THREE.Mesh; age: number }[] = [];
-
-  private lastTimestamp = 0;
-  private lastRaycastTime = 0;
-  private phaseElapsed = 0;
-  private doorAngle = 0;
-  private shipSurgeTime = 0;
-  private leftShipSurgeTime = 0;
-  private mouseNormX = 0;
-  private mouseNormY = 0;
-  private pendingDefaultScreen: ScreenId = 'gerencia';
-  private containerAttachedToShip = false;
-  private cachedShipBayWorld = new THREE.Vector3();
-
-  // Responsive 3D Scene Metrics (updated dynamically on resize/orientation change)
-  private camBaseY = 3.2;
-  private camBaseZ = 25;
-  private planePeakScale = 0.98;
-  private containerRestScale = 1.0;
-  private containerRestY = -0.55;
-  private shipRestX = 11.4;
-  private shipRestZ = -2.5;
-  private shipRestScale = 0.96;
-  private isCompactViewport = false;
-
-  private onPointerMoveBound = (e: PointerEvent): void => {
-    const w = window.innerWidth || 1;
-    const h = window.innerHeight || 1;
-    this.mouseNormX = (e.clientX / w) * 2 - 1;
-    this.mouseNormY = -(e.clientY / h) * 2 + 1;
-    this.pointer.set(this.mouseNormX, this.mouseNormY);
-
-    if (e.pointerType === 'touch' || this.phase() !== 'ready') {
-      if (this.shipHovered()) {
-        this.ngZone.run(() => this.shipHovered.set(false));
-      }
+  onSubmit() {
+    if (!this.email || !this.password) {
+      this.errorMessage.set('Por favor ingresa usuario y contraseña.');
+      this.toastService.warning('Campos incompletos', 'Ingresa usuario y contraseña para continuar.');
       return;
     }
 
-    const now = performance.now();
-    if (now - this.lastRaycastTime < 75) return;
-    this.lastRaycastTime = now;
-
-    const target = e.target as HTMLElement | null;
-    if (target && target.closest('.login-glass-card')) {
-      if (this.shipHovered()) {
-        this.ngZone.run(() => this.shipHovered.set(false));
-      }
-      return;
-    }
-
-    this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hitRight = this.raycaster.intersectObject(this.shipRefs.root, true).length > 0;
-    const hitLeft = !hitRight && this.raycaster.intersectObject(this.leftShipRefs.root, true).length > 0;
-    const isHit = hitRight || hitLeft;
-    if (isHit !== this.shipHovered()) {
-      this.ngZone.run(() => this.shipHovered.set(isHit));
-    }
-  };
-
-  private onWindowClickBound = (e: MouseEvent): void => {
-    if (this.phase() !== 'ready') return;
-    const target = e.target as HTMLElement | null;
-    if (target && (target.closest('.login-glass-card') || target.closest('button'))) {
-      return;
-    }
-    const w = window.innerWidth || 1;
-    const h = window.innerHeight || 1;
-    this.pointer.set((e.clientX / w) * 2 - 1, -(e.clientY / h) * 2 + 1);
-    this.raycaster.setFromCamera(this.pointer, this.camera);
-    if (this.raycaster.intersectObject(this.shipRefs.root, true).length > 0) {
-      this.shipSurgeTime = 1.0;
-      this.spawnWaveRipple(this.shipRefs.root.position.x, -5.5, this.shipRefs.root.position.z, 0xf5b041);
-      return;
-    }
-    if (this.raycaster.intersectObject(this.leftShipRefs.root, true).length > 0) {
-      this.leftShipSurgeTime = 1.0;
-      this.spawnWaveRipple(this.leftShipRefs.root.position.x, -5.5, this.leftShipRefs.root.position.z, 0xf5b041);
-      return;
-    }
-    this.spawnWaveRipple(this.mouseNormX * 10, -5.5, -2, 0x93c5fd);
-  };
-
-  private onVisibilityChangeBound = (): void => {
-    if (document.hidden) {
-      if (this.animationFrameId !== null) {
-        cancelAnimationFrame(this.animationFrameId);
-        this.animationFrameId = null;
-      }
-    } else if (this.animationFrameId === null) {
-      this.lastTimestamp = performance.now();
-      this.animationFrameId = requestAnimationFrame(this.animate);
-    }
-  };
-
-  onSubmit(): void {
-    if (this.isAuthenticating()) return;
-    this.errorMessage.set(null);
-
-    const res = this.authService.authenticateCredentials(this.email, this.password);
-    if (!res.ok) {
-      const msg = res.error ?? 'Credenciales incorrectas.';
-      this.errorMessage.set(msg);
-      this.toastService.error('Incorrecto — Acceso denegado', msg);
-      this.triggerErrorShake();
-      return;
-    }
-    this.toastService.success('Correcto — Acceso concedido', 'Validando embarque y cargando panel asignado...');
-    this.triggerSuccessDeparture(res.defaultScreen ?? 'gerencia');
-  }
-
-  quickSignIn(role: UserRole): void {
-    if (this.isAuthenticating()) return;
-    this.errorMessage.set(null);
-
-    const res = this.authService.quickDemoLogin(role);
-    if (!res.ok) {
-      const msg = res.error ?? 'No se pudo iniciar sesión.';
-      this.errorMessage.set(msg);
-      this.toastService.error('Incorrecto — Acceso denegado', msg);
-      this.triggerErrorShake();
-      return;
-    }
-    this.toastService.success('Correcto — Acceso concedido', `Ingresando con perfil ${role}...`);
-    this.triggerSuccessDeparture(res.defaultScreen ?? 'gerencia');
-  }
-
-  skipIntro(): void {
-    this.ngZone.runOutsideAngular(() => {
-      this.planeRefs.root.visible = false;
-
-      this.doorAngle = Math.PI * 0.66;
-      this.containerRefs.leftDoorPivot.rotation.y = -this.doorAngle;
-      this.containerRefs.rightDoorPivot.rotation.y = this.doorAngle;
-      this.containerRefs.bayLight.color.setHex(0xffd79e);
-      this.containerRefs.bayLight.intensity = 4.5;
-
-      this.containerRefs.root.position.set(0, this.containerRestY, 3.2);
-      this.containerRefs.root.rotation.set(0.05, 0, 0);
-      this.containerRefs.root.scale.setScalar(this.containerRestScale);
-      this.phaseElapsed = 0;
-    });
-
-    this.phase.set('ready');
-    this.cardVisible.set(true);
-  }
-
-  replayIntro(): void {
-    if (this.isAuthenticating()) return;
-    this.cardVisible.set(false);
-    this.phase.set('fly_in');
-
-    this.ngZone.runOutsideAngular(() => {
-      this.doorAngle = 0;
-      this.containerRefs.leftDoorPivot.rotation.y = 0;
-      this.containerRefs.rightDoorPivot.rotation.y = 0;
-      this.containerRefs.bayLight.intensity = 0;
-      this.padlockGroup.visible = false;
-      this.containerAttachedToShip = false;
-      if (this.containerRefs.root.parent !== this.scene) {
-        this.scene.add(this.containerRefs.root);
-      }
-
-      this.planeRefs.root.visible = true;
-      this.shipRefs.root.visible = true;
-      this.shipRefs.root.position.set(this.shipRestX, -4.3, this.shipRestZ);
-      this.shipRefs.root.rotation.set(0.04, -0.52, 0);
-      this.shipRefs.root.scale.setScalar(this.shipRestScale);
-      (this.shipRefs.wakeMesh.material as THREE.MeshBasicMaterial).opacity = 0;
-      (this.shipRefs.bowSpray.material as THREE.MeshBasicMaterial).opacity = 0;
-
-      this.leftShipRefs.root.visible = true;
-      this.leftShipRefs.root.position.set(-this.shipRestX - 0.5, -4.35, this.shipRestZ - 1.2);
-      this.leftShipRefs.root.rotation.set(0.04, 0.54, 0);
-      this.leftShipRefs.root.scale.setScalar(this.shipRestScale * 0.94);
-
-      this.phaseElapsed = 0;
-    });
-  }
-
-  private triggerErrorShake(): void {
-    this.phase.set('error_shake');
-    this.ngZone.runOutsideAngular(() => {
-      this.phaseElapsed = 0;
-      this.spawnWaveRipple(0, -3.15, 3.2, 0xef4444);
-    });
-  }
-
-  private triggerSuccessDeparture(defaultScreen: ScreenId): void {
-    this.pendingDefaultScreen = defaultScreen;
     this.isAuthenticating.set(true);
-    this.cardVisible.set(false);
-    this.phase.set('lock_and_depart');
+    this.errorMessage.set(null);
 
-    this.ngZone.runOutsideAngular(() => {
-      this.phaseElapsed = 0;
-      this.containerAttachedToShip = false;
+    const res = this.authService.login(this.email, this.password);
+    this.isAuthenticating.set(false);
 
-      // Exact world coordinates for reserved midship container slot at current responsive ship scale
-      this.cachedShipBayWorld.set(2.45, 2.25, 0);
-      this.shipRefs.root.updateMatrixWorld(true);
-      this.shipRefs.root.localToWorld(this.cachedShipBayWorld);
-    });
-  }
-
-  ngAfterViewInit(): void {
-    this.ngZone.runOutsideAngular(() => {
-      const host = this.canvasHost.nativeElement;
-      const w = host.clientWidth || window.innerWidth;
-      const h = host.clientHeight || window.innerHeight;
-
-      // Shadow-free fast PBR rendering prevents multi-pass shadow stalls on page load
-      this.initScene(w, h);
-      this.buildSkyAndOcean(w);
-      this.buildTexturedPier();
-
-      this.containerRefs = buildDetailedContainer(false);
-      this.containerRefs.root.scale.setScalar(0.35);
-      this.scene.add(this.containerRefs.root);
-
-      this.buildPadlock3D();
-
-      this.planeRefs = buildDetailedCargoPlane(false);
-      this.scene.add(this.planeRefs.root);
-
-      this.shipRefs = buildDetailedContainerShip(false);
-      this.scene.add(this.shipRefs.root);
-
-      this.leftShipRefs = buildDetailedContainerShip(false);
-      this.scene.add(this.leftShipRefs.root);
-
-      this.applyResponsiveLayout(w, h, true);
-      this.bindEvents();
-
-      this.lastTimestamp = performance.now();
-      this.animationFrameId = requestAnimationFrame(this.animate);
-    });
-  }
-
-  ngOnDestroy(): void {
-    if (this.animationFrameId !== null) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
-    }
-    this.resizeObserver?.disconnect();
-    window.removeEventListener('pointermove', this.onPointerMoveBound);
-    window.removeEventListener('click', this.onWindowClickBound);
-    document.removeEventListener('visibilitychange', this.onVisibilityChangeBound);
-
-    if (this.scene) {
-      disposeSceneResources(this.scene);
-      this.scene.environment?.dispose();
-    }
-    this.renderer?.dispose();
-  }
-
-  private bindEvents(): void {
-    window.addEventListener('pointermove', this.onPointerMoveBound, { passive: true });
-    window.addEventListener('click', this.onWindowClickBound);
-    document.addEventListener('visibilitychange', this.onVisibilityChangeBound);
-
-    if (typeof ResizeObserver !== 'undefined') {
-      this.resizeObserver = new ResizeObserver(() => {
-        const host = this.canvasHost?.nativeElement;
-        if (!host) return;
-        const w = Math.max(1, host.clientWidth || window.innerWidth);
-        const h = Math.max(1, host.clientHeight || window.innerHeight);
-        this.applyResponsiveLayout(w, h, false);
-      });
-      this.resizeObserver.observe(this.canvasHost.nativeElement);
-    }
-  }
-
-  private applyResponsiveLayout(w: number, h: number, initialPlacement: boolean): void {
-    if (!this.renderer || !this.camera) return;
-    const aspect = w / Math.max(1, h);
-    this.isCompactViewport = w < 768;
-
-    // Preserve widebody wings, 40' container, and cargo vessel across portrait phones, tablets, and desktops
-    if (aspect < 0.65) {
-      this.camera.fov = 56;
-      this.camBaseZ = 36;
-      this.camBaseY = 4.3;
-      this.planePeakScale = 0.72;
-      this.containerRestScale = 0.78;
-      this.containerRestY = -0.35;
-      this.shipRestX = 4.5;
-      this.shipRestZ = -7.0;
-      this.shipRestScale = 0.68;
-    } else if (aspect < 0.98) {
-      this.camera.fov = 49;
-      this.camBaseZ = 31;
-      this.camBaseY = 3.7;
-      this.planePeakScale = 0.84;
-      this.containerRestScale = 0.88;
-      this.containerRestY = -0.45;
-      this.shipRestX = 6.9;
-      this.shipRestZ = -4.6;
-      this.shipRestScale = 0.82;
-    } else if (aspect < 1.32) {
-      this.camera.fov = 44;
-      this.camBaseZ = 27.5;
-      this.camBaseY = 3.4;
-      this.planePeakScale = 0.92;
-      this.containerRestScale = 0.95;
-      this.containerRestY = -0.5;
-      this.shipRestX = 9.4;
-      this.shipRestZ = -3.2;
-      this.shipRestScale = 0.9;
+    if (res.ok && res.user && res.defaultScreen) {
+      this.toastService.success(
+        'Sesión iniciada',
+        `Bienvenido, ${res.user.nombre} (${ROLE_DEFINITIONS[res.user.role].label})`
+      );
+      this.loginSuccess.emit(res.defaultScreen);
     } else {
-      this.camera.fov = 42;
-      this.camBaseZ = 25;
-      this.camBaseY = 3.2;
-      this.planePeakScale = 0.98;
-      this.containerRestScale = 1.0;
-      this.containerRestY = -0.55;
-      this.shipRestX = 11.4;
-      this.shipRestZ = -2.5;
-      this.shipRestScale = 0.96;
-    }
-
-    this.camera.aspect = aspect;
-    this.camera.position.set(this.camera.position.x, this.camBaseY, this.camBaseZ);
-    this.camera.updateProjectionMatrix();
-
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.isCompactViewport ? 1.5 : 2));
-    this.renderer.setSize(w, h, false);
-
-    if (this.shipRefs?.root && (initialPlacement || this.phase() === 'ready')) {
-      this.shipRefs.root.position.set(this.shipRestX, -4.3, this.shipRestZ);
-      this.shipRefs.root.rotation.set(0.04, -0.52, 0);
-      this.shipRefs.root.scale.setScalar(this.shipRestScale);
-    }
-    if (this.leftShipRefs?.root && (initialPlacement || this.phase() === 'ready')) {
-      this.leftShipRefs.root.position.set(-this.shipRestX - 0.5, -4.35, this.shipRestZ - 1.2);
-      this.leftShipRefs.root.rotation.set(0.04, 0.54, 0);
-      this.leftShipRefs.root.scale.setScalar(this.shipRestScale * 0.94);
-    }
-    if (!initialPlacement && this.containerRefs?.root && this.phase() === 'ready') {
-      this.containerRefs.root.scale.setScalar(this.containerRestScale);
-      this.containerRefs.root.position.y = this.containerRestY;
-    }
-  }
-
-  private initScene(w: number, h: number): void {
-    this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x3f678e, 0.0052);
-
-    this.camera = new THREE.PerspectiveCamera(42, w / Math.max(1, h), 0.2, 280);
-    this.camera.position.set(0, 3.2, 25);
-    this.camera.lookAt(0, 0.4, 0);
-
-    this.renderer = new THREE.WebGLRenderer({
-      antialias: w >= 480,
-      alpha: false,
-      stencil: false,
-      powerPreference: 'high-performance'
-    });
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.18;
-    this.renderer.shadowMap.enabled = false;
-    this.canvasHost.nativeElement.appendChild(this.renderer.domElement);
-
-    // Coastal golden-hour PBR environment map for glossy sea, hull & glass reflections
-    this.scene.environment = createCoastalEnvironmentTexture(this.renderer);
-
-    const hemi = new THREE.HemisphereLight(0xd6ebff, 0x10273f, 1.15);
-    this.scene.add(hemi);
-
-    // Front-top fill keeps aircraft & container doors crisply lit
-    const keyLight = new THREE.DirectionalLight(0xfff0dd, 1.85);
-    keyLight.position.set(14, 22, 20);
-    this.scene.add(keyLight);
-
-    // Low golden sunset key over the sea horizon casts a realistic shimmering sun path across waves
-    const horizonSun = new THREE.DirectionalLight(0xffb86c, 2.25);
-    horizonSun.position.set(5, 9, -68);
-    this.scene.add(horizonSun);
-  }
-
-  private buildSkyAndOcean(w: number): void {
-    const skyTex = createSkyDomeTexture();
-    const skyDome = new THREE.Mesh(
-      new THREE.SphereGeometry(175, 36, 24),
-      new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false })
-    );
-    this.scene.add(skyDome);
-
-    // Glowing solar disc + soft atmospheric halo on the distant ocean horizon
-    const sunDisc = new THREE.Mesh(
-      new THREE.CircleGeometry(4.2, 28),
-      new THREE.MeshBasicMaterial({ color: 0xfff3d6, transparent: true, opacity: 0.92, fog: false, depthWrite: false })
-    );
-    sunDisc.position.set(6, 7.2, -148);
-    this.scene.add(sunDisc);
-
-    const sunHalo = new THREE.Mesh(
-      new THREE.CircleGeometry(14, 28),
-      new THREE.MeshBasicMaterial({ color: 0xffba73, transparent: true, opacity: 0.24, fog: false, depthWrite: false })
-    );
-    sunHalo.position.set(6, 7.2, -149);
-    this.scene.add(sunHalo);
-
-    // Distant coastal headland silhouette along far horizon
-    const ridgeGeo = new THREE.PlaneGeometry(310, 7.5, 24, 1);
-    const ridgePos = ridgeGeo.attributes['position'] as THREE.BufferAttribute;
-    for (let i = 0; i < ridgePos.count; i++) {
-      const rx = ridgePos.getX(i);
-      const ry = ridgePos.getY(i);
-      if (ry > 0) {
-        const hill = Math.max(0, Math.sin(rx * 0.045 + 0.8) * 2.4 + Math.cos(rx * 0.11) * 1.1);
-        ridgePos.setY(i, ry * 0.45 + hill);
-      }
-    }
-    const coastalRidge = new THREE.Mesh(
-      ridgeGeo,
-      new THREE.MeshBasicMaterial({ color: 0x1b3754, transparent: true, opacity: 0.55, fog: true, depthWrite: false })
-    );
-    coastalRidge.position.set(0, -3.5, -134);
-    this.scene.add(coastalRidge);
-
-    // Drifting multi-depth soft cumulus clouds
-    const cloudTex = createCloudLayerTexture();
-    const cloudConfigs: [number, number, number, number, number, number][] = [
-      [-68, 22, -96, 44, 13, 0.45],
-      [-26, 26, -108, 52, 15, 0.35],
-      [22, 20, -92, 48, 14, 0.52],
-      [74, 24, -104, 46, 13, 0.40],
-      [-48, 14, -118, 38, 10, 0.28],
-      [48, 15, -122, 42, 11, 0.32],
-      [0, 31, -86, 56, 16, 0.26]
-    ];
-    this.cloudLayers = cloudConfigs.map(([cx, cy, cz, cw, ch, speed], idx) => {
-      const mat = new THREE.MeshBasicMaterial({
-        map: cloudTex,
-        transparent: true,
-        opacity: 0.72,
-        depthWrite: false,
-        fog: true
-      });
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(cw, ch), mat);
-      mesh.position.set(cx, cy, cz);
-      this.scene.add(mesh);
-      return { mesh, speed, baseY: cy, phase: idx * 1.1 };
-    });
-
-    // High-contrast seamless normal map for realistic capillary wave sparkles
-    this.waterNormalTex = createWaterNormalTexture();
-    const segX = w < 768 ? 48 : 80;
-    const segZ = w < 768 ? 36 : 56;
-    const oceanGeo = new THREE.PlaneGeometry(290, 210, segX, segZ);
-    oceanGeo.rotateX(-Math.PI / 2);
-
-    const posAttr = oceanGeo.attributes['position'] as THREE.BufferAttribute;
-    this.oceanArray = posAttr.array as Float32Array;
-    this.oceanVertexCount = posAttr.count;
-
-    // Pre-allocate vertex color buffer for deep pelagic troughs -> luminous turquoise wave crests
-    this.oceanColors = new Float32Array(this.oceanVertexCount * 3);
-    for (let i = 0; i < this.oceanVertexCount; i++) {
-      this.oceanColors[i * 3] = 0.05;
-      this.oceanColors[i * 3 + 1] = 0.24;
-      this.oceanColors[i * 3 + 2] = 0.38;
-    }
-    oceanGeo.setAttribute('color', new THREE.BufferAttribute(this.oceanColors, 3));
-
-    const oceanMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      vertexColors: true,
-      metalness: 0.86,
-      roughness: 0.09,
-      normalMap: this.waterNormalTex,
-      normalScale: new THREE.Vector2(0.85, 0.85),
-      envMapIntensity: 1.9
-    });
-    this.oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
-    this.oceanMesh.position.set(0, -5.8, -34);
-    this.scene.add(this.oceanMesh);
-
-    // Soft seafoam ring where ocean meets concrete pier
-    const foamTex = createWaterFoamTexture();
-    this.pierFoam = new THREE.Mesh(
-      new THREE.PlaneGeometry(16.8, 17.6),
-      new THREE.MeshBasicMaterial({
-        map: foamTex,
-        transparent: true,
-        opacity: 0.48,
-        depthWrite: false
-      })
-    );
-    this.pierFoam.rotation.x = -Math.PI / 2;
-    this.pierFoam.position.set(0, -5.42, 3.2);
-    this.scene.add(this.pierFoam);
-  }
-
-  private buildTexturedPier(): void {
-    const pierTex = createPortPierTextures();
-    const pierMat = new THREE.MeshStandardMaterial({
-      map: pierTex.map,
-      bumpMap: pierTex.bumpMap,
-      bumpScale: 0.14,
-      roughness: 0.78,
-      metalness: 0.12
-    });
-
-    const platform = new THREE.Mesh(new THREE.BoxGeometry(11.8, 1.8, 12.6), pierMat);
-    platform.position.set(0, -4.1, 3.2);
-    this.scene.add(platform);
-
-    const bollardGeo = new THREE.CylinderGeometry(0.18, 0.25, 0.56, 12);
-    const bollardMat = new THREE.MeshStandardMaterial({ color: 0xe09f3e, metalness: 0.7, roughness: 0.28 });
-    [[-5.0, 7.8], [5.0, 7.8], [-5.0, -1.6], [5.0, -1.6]].forEach(([bx, bz]) => {
-      const b = new THREE.Mesh(bollardGeo, bollardMat);
-      b.position.set(bx, -2.95, bz);
-      this.scene.add(b);
-    });
-  }
-
-  private buildPadlock3D(): void {
-    const brassMat = new THREE.MeshStandardMaterial({
-      color: 0xf0b243,
-      metalness: 0.92,
-      roughness: 0.16,
-      envMapIntensity: 1.6
-    });
-    const steelMat = new THREE.MeshStandardMaterial({
-      color: 0xf8fafc,
-      metalness: 0.95,
-      roughness: 0.1,
-      envMapIntensity: 1.6
-    });
-    const keyholeMat = new THREE.MeshBasicMaterial({ color: 0x090f18 });
-
-    const bodyShape = new THREE.Shape();
-    const bw = 0.58;
-    const bh = 0.68;
-    const r = 0.12;
-    bodyShape.moveTo(-bw + r, -bh);
-    bodyShape.lineTo(bw - r, -bh);
-    bodyShape.quadraticCurveTo(bw, -bh, bw, -bh + r);
-    bodyShape.lineTo(bw, bh - r);
-    bodyShape.quadraticCurveTo(bw, bh, bw - r, bh);
-    bodyShape.lineTo(-bw + r, bh);
-    bodyShape.quadraticCurveTo(-bw, bh, -bw, bh - r);
-    bodyShape.lineTo(-bw, -bh + r);
-    bodyShape.quadraticCurveTo(-bw, -bh, -bw + r, -bh);
-
-    const bodyGeo = new THREE.ExtrudeGeometry(bodyShape, {
-      depth: 0.34,
-      bevelEnabled: true,
-      bevelSegments: 2,
-      bevelSize: 0.04,
-      bevelThickness: 0.04
-    });
-    bodyGeo.center();
-    const body = new THREE.Mesh(bodyGeo, brassMat);
-
-    const shackleGeo = new THREE.TorusGeometry(0.42, 0.11, 12, 24, Math.PI);
-    this.shackleMesh = new THREE.Mesh(shackleGeo, steelMat);
-    this.shackleMesh.position.set(0, 0.72, 0);
-
-    const keyhole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.44, 12), keyholeMat);
-    keyhole.rotation.x = Math.PI / 2;
-    keyhole.position.set(0, -0.05, 0.02);
-
-    this.padlockGroup.add(body, this.shackleMesh, keyhole);
-    this.padlockGroup.position.set(0, 0.05, 4.62);
-    this.padlockGroup.visible = false;
-    this.containerRefs.root.add(this.padlockGroup);
-  }
-
-  private spawnWaveRipple(x: number, y: number, z: number, color: number): void {
-    const geo = new THREE.RingGeometry(0.65, 0.98, 32);
-    geo.rotateX(-Math.PI / 2);
-    const mat = new THREE.MeshBasicMaterial({
-      color,
-      transparent: true,
-      opacity: 0.85,
-      side: THREE.DoubleSide
-    });
-    const ring = new THREE.Mesh(geo, mat);
-    ring.position.set(x, y, z);
-    this.scene.add(ring);
-    this.rippleRings.push({ mesh: ring, age: 0 });
-  }
-
-  private easeOutCubic(x: number): number {
-    return 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
-  }
-
-  private easeOutBounce(x: number): number {
-    const t = Math.min(1, Math.max(0, x));
-    const n1 = 7.5625;
-    const d1 = 2.75;
-    if (t < 1 / d1) return n1 * t * t;
-    if (t < 2 / d1) {
-      const u = t - 1.5 / d1;
-      return n1 * u * u + 0.75;
-    }
-    if (t < 2.5 / d1) {
-      const u = t - 2.25 / d1;
-      return n1 * u * u + 0.9375;
-    }
-    const u = t - 2.625 / d1;
-    return n1 * u * u + 0.984375;
-  }
-
-  private animate = (now: number): void => {
-    this.animationFrameId = requestAnimationFrame(this.animate);
-    const dt = Math.min(0.05, Math.max(0.001, (now - this.lastTimestamp) / 1000));
-    this.lastTimestamp = now;
-    this.phaseElapsed += dt;
-    const t = now * 0.001;
-    const curPhase = this.phase();
-
-    // Responsive cursor camera parallax
-    const targetCamX = this.mouseNormX * (this.isCompactViewport ? 0.75 : 1.65);
-    const targetCamY = this.camBaseY + this.mouseNormY * (this.isCompactViewport ? 0.45 : 0.85);
-    this.camera.position.x += (targetCamX - this.camera.position.x) * 0.05;
-    this.camera.position.y += (targetCamY - this.camera.position.y) * 0.05;
-    this.camera.lookAt(0, 0.35, 0);
-
-    // Specular water drift, volumetric clouds, pier seafoam & crest-shaded swells
-    if (this.waterNormalTex) {
-      this.waterNormalTex.offset.x += dt * 0.022;
-      this.waterNormalTex.offset.y += dt * 0.015;
-    }
-    if (this.pierFoam) {
-      const pulse = 1 + Math.sin(t * 1.45) * 0.025;
-      this.pierFoam.scale.set(pulse, pulse, 1);
-      (this.pierFoam.material as THREE.MeshBasicMaterial).opacity = 0.36 + Math.sin(t * 1.45) * 0.12;
-    }
-    for (const cl of this.cloudLayers) {
-      cl.mesh.position.x += dt * cl.speed;
-      if (cl.mesh.position.x > 115) cl.mesh.position.x = -115;
-      cl.mesh.position.y = cl.baseY + Math.sin(t * 0.25 + cl.phase) * 0.35;
-    }
-    if (this.oceanArray && this.oceanColors) {
-      this.oceanFrameSkip = !this.oceanFrameSkip;
-      if (!this.isCompactViewport || this.oceanFrameSkip) {
-        const arr = this.oceanArray;
-        const cols = this.oceanColors;
-        const count = this.oceanVertexCount;
-        for (let i = 0; i < count; i++) {
-          const idx = i * 3;
-          const vx = arr[idx];
-          const vz = arr[idx + 2];
-          const wy =
-            Math.sin(vx * 0.12 + t * 1.2) * 0.28 +
-            Math.cos(vz * 0.15 + t * 0.98) * 0.24 +
-            Math.sin((vx * 0.07 - vz * 0.09) + t * 0.78) * 0.18;
-          arr[idx + 1] = wy;
-
-          // Normalize wave height (-0.70..+0.70) into deep navy trough -> turquoise crest
-          const k = Math.max(0, Math.min(1, (wy + 0.65) / 1.3));
-          const foam = k > 0.86 ? (k - 0.86) * 1.6 : 0;
-          cols[idx] = 0.03 + k * 0.09 + foam * 0.35;
-          cols[idx + 1] = 0.14 + k * 0.26 + foam * 0.36;
-          cols[idx + 2] = 0.26 + k * 0.30 + foam * 0.32;
-        }
-        (this.oceanMesh.geometry.attributes['position'] as THREE.BufferAttribute).needsUpdate = true;
-        (this.oceanMesh.geometry.attributes['color'] as THREE.BufferAttribute).needsUpdate = true;
-      }
-    }
-
-    // Dual ship radars (both vessels) & plane turbofans + strobe
-    this.shipRefs.radarScanners.forEach((sc, i) => (sc.rotation.y += dt * (2.2 + i * 0.9)));
-    this.leftShipRefs.radarScanners.forEach((sc, i) => (sc.rotation.y -= dt * (1.9 + i * 0.8)));
-
-    // Gentle harbor bobbing on companion left ship across all phases
-    this.leftShipSurgeTime = Math.max(0, this.leftShipSurgeTime - dt * 0.75);
-    this.leftShipRefs.root.position.y =
-      -4.35 + Math.sin(t * 0.95 + 2.6) * 0.14 + Math.sin(this.leftShipSurgeTime * Math.PI) * 0.42;
-    this.leftShipRefs.root.rotation.z =
-      Math.sin(t * 0.72 + 1.0) * 0.022 + Math.sin(this.leftShipSurgeTime * Math.PI * 3) * 0.06;
-    if (this.planeRefs.root.visible) {
-      const fanSpeed = dt * 24;
-      this.planeRefs.turbineFans.forEach(fan => (fan.rotation.z += fanSpeed));
-      const blink = Math.sin(t * 9) > 0.78;
-      (this.planeRefs.strobeLight.material as THREE.MeshBasicMaterial).color.setHex(blink ? 0xff4d4d : 0x550000);
-    }
-
-    // PHASE 1: Plane starts SMALL at top-center far horizon & flies straight FRONT getting LARGER
-    if (curPhase === 'fly_in') {
-      const dur = 2.15;
-      const p = Math.min(1, this.phaseElapsed / dur);
-      const ease = Math.pow(p, 1.38);
-
-      const px = Math.sin(p * Math.PI) * 0.25;
-      const py = THREE.MathUtils.lerp(14.5, 4.7, ease);
-      const pz = THREE.MathUtils.lerp(-92, 2.2, ease);
-
-      this.planeRefs.root.position.set(px, py, pz);
-      this.planeRefs.root.rotation.set(0.08 * (1 - p), 0, Math.sin(p * Math.PI * 2) * 0.07);
-      this.planeRefs.root.scale.setScalar(THREE.MathUtils.lerp(0.28, this.planePeakScale, ease));
-
-      this.containerRefs.root.position.set(px, py - 1.65 * this.planeRefs.root.scale.y, pz + 0.5);
-      this.containerRefs.root.rotation.set(0.05, 0, 0);
-      this.containerRefs.root.scale.setScalar(THREE.MathUtils.lerp(0.22, this.containerRestScale * 0.65, ease));
-
-      if (p >= 1) {
-        this.phaseElapsed = 0;
-        this.ngZone.run(() => this.phase.set('drop_and_land'));
-      }
-    }
-
-    // PHASE 2: Container drops front-facing onto Pier -> Plane continues straight FORWARD & OUT OF FRAME!
-    else if (curPhase === 'drop_and_land') {
-      const dur = 1.15;
-      const p = Math.min(1, this.phaseElapsed / dur);
-      const bp = this.easeOutBounce(p);
-      const ep = this.easeOutCubic(p);
-
-      const exitP = Math.min(1, p * 1.12);
-      const planeZ = THREE.MathUtils.lerp(2.2, this.camBaseZ + 12, Math.pow(exitP, 1.15));
-      const planeY = THREE.MathUtils.lerp(4.7, 14.5, Math.pow(exitP, 1.2));
-      this.planeRefs.root.position.set(0, planeY, planeZ);
-      this.planeRefs.root.rotation.set(-0.22 * exitP, 0, 0);
-      this.planeRefs.root.scale.setScalar(THREE.MathUtils.lerp(this.planePeakScale, this.planePeakScale * 1.24, exitP));
-
-      if (planeZ >= this.camBaseZ + 6) {
-        this.planeRefs.root.visible = false;
-      }
-
-      this.containerRefs.root.position.set(
-        0,
-        THREE.MathUtils.lerp(3.15, this.containerRestY, bp),
-        THREE.MathUtils.lerp(2.7, 3.2, ep)
+      this.errorMessage.set(res.error || 'Credenciales no válidas.');
+      this.toastService.error(
+        'Error de autenticación',
+        res.error || 'El correo o contraseña no coinciden con ninguna cuenta activa.'
       );
-      this.containerRefs.root.rotation.set(0.05, 0, 0);
-      this.containerRefs.root.scale.setScalar(
-        THREE.MathUtils.lerp(this.containerRestScale * 0.65, this.containerRestScale, ep)
-      );
-
-      if (p >= 1) {
-        this.planeRefs.root.visible = false;
-        this.spawnWaveRipple(0, -3.15, 3.2, 0xf5b041);
-        this.phaseElapsed = 0;
-        this.ngZone.run(() => this.phase.set('open_container'));
-      }
     }
+  }
 
-    // PHASE 3: Front Container doors swing wide open -> Login card appears
-    else if (curPhase === 'open_container') {
-      const dur = 0.9;
-      const p = Math.min(1, this.phaseElapsed / dur);
-      const ep = this.easeOutCubic(p);
-
-      this.doorAngle = ep * (Math.PI * 0.66);
-      this.containerRefs.leftDoorPivot.rotation.y = -this.doorAngle;
-      this.containerRefs.rightDoorPivot.rotation.y = this.doorAngle;
-      this.containerRefs.bayLight.color.setHex(0xffd79e);
-      this.containerRefs.bayLight.intensity = ep * 4.6;
-
-      if (p > 0.35 && !this.cardVisible()) {
-        this.ngZone.run(() => this.cardVisible.set(true));
-      }
-
-      if (p >= 1) {
-        this.phaseElapsed = 0;
-        this.ngZone.run(() => this.phase.set('ready'));
-      }
+  quickSignIn(role: UserRole) {
+    const demoUser = DEMO_USERS.find(u => u.role === role);
+    if (demoUser) {
+      this.email = demoUser.email;
+      this.password = demoUser.password;
+      this.onSubmit();
     }
-
-    // PHASE 4: Interactive Ready State
-    else if (curPhase === 'ready') {
-      this.containerRefs.root.rotation.y += (this.mouseNormX * 0.1 - this.containerRefs.root.rotation.y) * 0.06;
-      this.containerRefs.root.rotation.x += (0.05 - this.mouseNormY * 0.07 - this.containerRefs.root.rotation.x) * 0.06;
-      this.containerRefs.root.position.y = this.containerRestY + Math.sin(t * 1.1) * 0.05;
-
-      this.shipSurgeTime = Math.max(0, this.shipSurgeTime - dt * 0.75);
-      this.shipRefs.root.position.y = -4.3 + Math.sin(t * 1.05 + 1.4) * 0.15 + Math.sin(this.shipSurgeTime * Math.PI) * 0.45;
-      this.shipRefs.root.rotation.z = Math.sin(t * 0.8) * 0.025 + Math.sin(this.shipSurgeTime * Math.PI * 3) * 0.07;
-      this.shipRefs.root.rotation.y += (-0.52 + this.mouseNormX * 0.12 - this.shipRefs.root.rotation.y) * 0.05;
-      this.leftShipRefs.root.rotation.y += (0.54 + this.mouseNormX * 0.12 - this.leftShipRefs.root.rotation.y) * 0.05;
-    }
-
-    // PHASE 5A: Wrong password shake
-    else if (curPhase === 'error_shake') {
-      const dur = 0.75;
-      const p = Math.min(1, this.phaseElapsed / dur);
-      const decay = 1 - p;
-      const vib = Math.sin(this.phaseElapsed * 56) * decay;
-
-      this.containerRefs.root.position.x = vib * 0.48;
-      this.containerRefs.root.rotation.z = vib * 0.09;
-      this.containerRefs.bayLight.color.setHex(0xef4444);
-      this.containerRefs.bayLight.intensity = 6.5 * decay + 1.4;
-
-      if (p >= 1) {
-        this.containerRefs.root.position.x = 0;
-        this.containerRefs.root.rotation.z = 0;
-        this.containerRefs.bayLight.color.setHex(0xffd79e);
-        this.containerRefs.bayLight.intensity = 4.6;
-        this.phaseElapsed = 0;
-        this.ngZone.run(() => this.phase.set('ready'));
-      }
-    }
-
-    // PHASE 5B: Valid Login -> Close Doors -> Snap Padlock -> Board Ship -> Ship Sails Completely Out of Frame!
-    else if (curPhase === 'lock_and_depart') {
-      const e = this.phaseElapsed;
-
-      if (e < 0.65) {
-        const dp = this.easeOutCubic(e / 0.65);
-        this.doorAngle = (1 - dp) * (Math.PI * 0.66);
-        this.containerRefs.leftDoorPivot.rotation.y = -this.doorAngle;
-        this.containerRefs.rightDoorPivot.rotation.y = this.doorAngle;
-        this.containerRefs.bayLight.intensity = (1 - dp) * 4.6;
-      } else if (e < 1.28) {
-        this.doorAngle = 0;
-        this.containerRefs.leftDoorPivot.rotation.y = 0;
-        this.containerRefs.rightDoorPivot.rotation.y = 0;
-
-        const lp = this.easeOutCubic((e - 0.65) / 0.38);
-        this.padlockGroup.visible = true;
-        this.padlockGroup.position.y = THREE.MathUtils.lerp(2.1, 0.05, lp);
-
-        const snapP = Math.max(0, (e - 0.96) / 0.22);
-        this.shackleMesh.position.y = THREE.MathUtils.lerp(1.04, 0.72, Math.min(1, snapP));
-
-        if (e > 1.04 && e < 1.09) {
-          this.spawnWaveRipple(0, -3.15, 3.2, 0x10b981);
-        }
-      } else if (e < 2.04) {
-        const bp = this.easeOutCubic((e - 1.28) / 0.74);
-        const arcLift = Math.sin(bp * Math.PI) * 4.2;
-        const dockedScale = 0.36 * (this.shipRestScale / 0.96);
-
-        this.containerRefs.root.position.set(
-          THREE.MathUtils.lerp(0, this.cachedShipBayWorld.x, bp),
-          THREE.MathUtils.lerp(this.containerRestY, this.cachedShipBayWorld.y, bp) + arcLift,
-          THREE.MathUtils.lerp(3.2, this.cachedShipBayWorld.z, bp)
-        );
-        this.containerRefs.root.rotation.set(
-          THREE.MathUtils.lerp(0.05, 0.04, bp),
-          THREE.MathUtils.lerp(0, -Math.PI / 2 - 0.52, bp),
-          0
-        );
-        this.containerRefs.root.scale.setScalar(THREE.MathUtils.lerp(this.containerRestScale, dockedScale, bp));
-      } else {
-        if (!this.containerAttachedToShip) {
-          this.containerAttachedToShip = true;
-          this.shipRefs.root.attach(this.containerRefs.root);
-          this.spawnWaveRipple(this.shipRefs.root.position.x, -5.5, this.shipRefs.root.position.z, 0xf5b041);
-        }
-
-        const sp = Math.min(1, (e - 2.04) / 1.85);
-        const sailSpeed = dt * (9 + 36 * Math.pow(sp, 1.15));
-        this.shipRefs.root.position.x += Math.cos(0.52) * sailSpeed;
-        this.shipRefs.root.position.z -= Math.sin(0.52) * sailSpeed;
-        this.shipRefs.root.rotation.z = -0.045 * Math.sin(sp * Math.PI);
-
-        (this.shipRefs.wakeMesh.material as THREE.MeshBasicMaterial).opacity = Math.min(0.45, sp * 0.75);
-        (this.shipRefs.bowSpray.material as THREE.MeshBasicMaterial).opacity = Math.min(0.35, sp * 0.6);
-        (this.shipRefs.beaconMesh.material as THREE.MeshBasicMaterial).color.setHex(0x10b981);
-
-        if (this.shipRefs.root.position.x > this.shipRestX + 27) {
-          this.shipRefs.root.visible = false;
-        }
-
-        if (sp > 0.78 && !this.exitingToApp()) {
-          this.ngZone.run(() => this.exitingToApp.set(true));
-        }
-
-        if (sp >= 1.0) {
-          this.shipRefs.root.visible = false;
-          this.ngZone.run(() => {
-            this.authService.commitSession();
-            this.loginSuccess.emit(this.pendingDefaultScreen);
-          });
-          return;
-        }
-      }
-    }
-
-    // Surface water ripples
-    for (let i = this.rippleRings.length - 1; i >= 0; i--) {
-      const r = this.rippleRings[i];
-      r.age += dt * 1.35;
-      const s = 1 + r.age * 8;
-      r.mesh.scale.set(s, s, s);
-      (r.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.8 * (1 - r.age));
-      if (r.age >= 1) {
-        this.scene.remove(r.mesh);
-        r.mesh.geometry.dispose();
-        (r.mesh.material as THREE.Material).dispose();
-        this.rippleRings.splice(i, 1);
-      }
-    }
-
-    this.renderer.render(this.scene, this.camera);
-  };
+  }
 }

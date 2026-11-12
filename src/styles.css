@@ -25,24 +25,24 @@
   --text-muted: #64748B;
   --text-light: #94A3B8;
 
-  /* Status Colors */
-  --status-open-bg: #EFF6FF;
-  --status-open-text: #1D4ED8;
-  --status-open-border: #BFDBFE;
+  /* Status Colors (Sober, High-Contrast AAA) */
+  --status-open-bg: #F0F7FF;
+  --status-open-text: #1E40AF;
+  --status-open-border: #DBEAFE;
   --status-open-dot: #3B82F6;
 
   --status-review-bg: #FFFBEB;
-  --status-review-text: #B45309;
+  --status-review-text: #92400E;
   --status-review-border: #FDE68A;
-  --status-review-dot: #F59E0B;
+  --status-review-dot: #D97706;
 
-  --status-closed-bg: #ECFDF5;
-  --status-closed-text: #047857;
-  --status-closed-border: #A7F3D0;
-  --status-closed-dot: #10B981;
+  --status-closed-bg: #F0FDF4;
+  --status-closed-text: #166534;
+  --status-closed-border: #BBF7D0;
+  --status-closed-dot: #16A34A;
 
   --status-na-bg: #F8FAFC;
-  --status-na-text: #64748B;
+  --status-na-text: #475569;
   --status-na-border: #E2E8F0;
   --status-na-dot: #94A3B8;
 
@@ -167,6 +167,90 @@ footer {
   border: 1px solid var(--status-na-border);
 }
 .status-pill.status-na .dot { background-color: var(--status-na-dot); }
+
+/* ==========================================================================
+   Sober Enterprise Badge System (High-contrast, zero illegible combinations)
+   ========================================================================== */
+.badge-subtle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  font-size: 0.72rem;
+  padding: 2.5px 8px;
+  border-radius: 6px;
+  line-height: 1.25;
+  border: 1px solid transparent;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.badge-subtle-slate {
+  background-color: #F1F5F9;
+  color: #1E293B;
+  border-color: #E2E8F0;
+}
+
+.badge-subtle-dark {
+  background-color: #0F172A;
+  color: #FFFFFF;
+  border-color: #0F172A;
+}
+
+.badge-subtle-blue {
+  background-color: #EFF6FF;
+  color: #1E40AF;
+  border-color: #DBEAFE;
+}
+
+.badge-subtle-emerald {
+  background-color: #F0FDF4;
+  color: #166534;
+  border-color: #BBF7D0;
+}
+
+.badge-subtle-amber {
+  background-color: #FFFBEB;
+  color: #92400E;
+  border-color: #FDE68A;
+}
+
+.badge-subtle-rose {
+  background-color: #FEF2F2;
+  color: #991B1B;
+  border-color: #FECACA;
+}
+
+/* Pagination Row-Selector Segmented Buttons */
+.pagination-size-group .btn {
+  font-size: 0.72rem;
+  padding: 1px 7px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   Slate Neutral Utilities (Sober, Corporate & Cohesive)
+   ========================================================================== */
+.bg-slate-50 { background-color: #F8FAFC !important; }
+.bg-slate-100 { background-color: #F1F5F9 !important; }
+.bg-slate-200 { background-color: #E2E8F0 !important; }
+.bg-slate-300 { background-color: #CBD5E1 !important; }
+.bg-slate-600 { background-color: #475569 !important; }
+.bg-slate-700 { background-color: #334155 !important; }
+.bg-slate-800 { background-color: #1E293B !important; }
+.bg-slate-900 { background-color: #0F172A !important; }
+
+.text-slate-400 { color: #94A3B8 !important; }
+.text-slate-500 { color: #64748B !important; }
+.text-slate-600 { color: #475569 !important; }
+.text-slate-700 { color: #334155 !important; }
+.text-slate-800 { color: #1E293B !important; }
+.text-slate-900 { color: #0F172A !important; }
+
+.border-slate-100 { border-color: #F1F5F9 !important; }
+.border-slate-200 { border-color: #E2E8F0 !important; }
+.border-slate-300 { border-color: #CBD5E1 !important; }
 
 /* Table Design */
 .table-arlogs {

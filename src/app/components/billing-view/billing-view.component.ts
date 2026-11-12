@@ -12,14 +12,9 @@ import { ShipmentJob } from '../../models/shipment.model';
   template: `
     <div class="billing-view py-2">
 
-      <!-- Header -->
+      <!-- Header & Export Action -->
       <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-        <div>
-          <h5 class="fw-bold mb-0 text-dark font-heading">Contabilidad y Facturación (Cotizado vs. Facturado)</h5>
-          <span class="fs-xs text-muted">
-            Facturación heredada desde Pricing y Operaciones sin re-digitación, control de profit real y alertas de flujo
-          </span>
-        </div>
+        <h5 class="fw-bold mb-0 text-dark font-heading">Contabilidad y Facturación</h5>
 
         <button type="button" class="btn btn-sm btn-outline-success d-flex align-items-center gap-1" (click)="exportBillingExcel()">
           <i class="bi bi-file-earmark-excel"></i>
@@ -27,191 +22,194 @@ import { ShipmentJob } from '../../models/shipment.model';
         </button>
       </div>
 
-      <!-- KPI Cards -->
-      <div class="row g-3 mb-3">
-        <div class="col-6 col-lg-3">
-          <div class="card-executive p-3 h-100">
-            <div class="d-flex justify-content-between align-items-center text-muted fs-xs mb-1">
-              <span class="fw-semibold text-uppercase">Total Cotizado</span>
-              <i class="bi bi-tag text-primary"></i>
+      <!-- Unified KPI Stat Strip (Space-optimized) -->
+      <div class="stat-ribbon bg-white border border-slate-200 rounded-3 p-3 mb-3 shadow-xs">
+        <div class="row g-2 align-items-center text-center text-sm-start">
+          <div class="col-6 col-md-3 border-end-sm">
+            <div class="d-flex align-items-center gap-2 justify-content-center justify-content-sm-start">
+              <div class="stat-icon bg-slate-100 text-dark rounded-2 d-flex align-items-center justify-content-center">
+                <i class="bi bi-tag"></i>
+              </div>
+              <div>
+                <span class="fs-xxs text-muted text-uppercase fw-semibold d-block">Total Cotizado</span>
+                <span class="fs-5 fw-bold mono-font text-dark">\${{ totals().cotizado | number:'1.0-0' }}</span>
+              </div>
             </div>
-            <div class="fs-4 fw-bold text-dark mono-font">\${{ totals().cotizado | number:'1.0-0' }}</div>
-            <div class="fs-xxs text-muted mt-1">{{ filteredJobs().length }} embarque(s) visibles</div>
           </div>
-        </div>
-
-        <div class="col-6 col-lg-3">
-          <div class="card-executive p-3 h-100">
-            <div class="d-flex justify-content-between align-items-center text-muted fs-xs mb-1">
-              <span class="fw-semibold text-uppercase">Facturado Real</span>
-              <i class="bi bi-receipt-cutoff text-success"></i>
+          <div class="col-6 col-md-3 border-end-sm">
+            <div class="d-flex align-items-center gap-2 justify-content-center justify-content-sm-start">
+              <div class="stat-icon bg-emerald-50 text-success rounded-2 d-flex align-items-center justify-content-center">
+                <i class="bi bi-receipt-cutoff"></i>
+              </div>
+              <div>
+                <span class="fs-xxs text-muted text-uppercase fw-semibold d-block">Facturado Real</span>
+                <span class="fs-5 fw-bold mono-font text-success">\${{ totals().facturado | number:'1.0-0' }}</span>
+              </div>
             </div>
-            <div class="fs-4 fw-bold text-success mono-font">\${{ totals().facturado | number:'1.0-0' }}</div>
-            <div class="fs-xxs text-muted mt-1">{{ totals().facturadosCount }} facturas emitidas</div>
           </div>
-        </div>
-
-        <div class="col-6 col-lg-3">
-          <div class="card-executive p-3 h-100">
-            <div class="d-flex justify-content-between align-items-center text-muted fs-xs mb-1">
-              <span class="fw-semibold text-uppercase">Profit Real Acum.</span>
-              <i class="bi bi-graph-up-arrow text-info"></i>
+          <div class="col-6 col-md-3 border-end-sm">
+            <div class="d-flex align-items-center gap-2 justify-content-center justify-content-sm-start">
+              <div class="stat-icon bg-blue-50 text-primary rounded-2 d-flex align-items-center justify-content-center">
+                <i class="bi bi-graph-up-arrow"></i>
+              </div>
+              <div>
+                <span class="fs-xxs text-muted text-uppercase fw-semibold d-block">Profit Real</span>
+                <span class="fs-5 fw-bold mono-font" [class.text-primary]="totals().profitReal >= 0" [class.text-danger]="totals().profitReal < 0">
+                  \${{ totals().profitReal | number:'1.0-0' }}
+                </span>
+              </div>
             </div>
-            <div class="fs-4 fw-bold mono-font" [class.text-primary]="totals().profitReal >= 0" [class.text-danger]="totals().profitReal < 0">
-              \${{ totals().profitReal | number:'1.0-0' }}
-            </div>
-            <div class="fs-xxs text-muted mt-1">Cotizado est.: \${{ totals().profitCotizado | number:'1.0-0' }}</div>
           </div>
-        </div>
-
-        <div class="col-6 col-lg-3">
-          <div class="card-executive p-3 h-100">
-            <div class="d-flex justify-content-between align-items-center text-muted fs-xs mb-1">
-              <span class="fw-semibold text-uppercase">Pendientes / Flujo 30d</span>
-              <i class="bi bi-exclamation-circle text-warning"></i>
+          <div class="col-6 col-md-3">
+            <div class="d-flex align-items-center gap-2 justify-content-center justify-content-sm-start">
+              <div class="stat-icon bg-amber-50 text-warning rounded-2 d-flex align-items-center justify-content-center">
+                <i class="bi bi-hourglass-split"></i>
+              </div>
+              <div>
+                <span class="fs-xxs text-muted text-uppercase fw-semibold d-block">Pendientes</span>
+                <span class="fs-5 fw-bold mono-font text-warning">{{ totals().pendientes }}</span>
+              </div>
             </div>
-            <div class="fs-4 fw-bold text-warning mono-font">{{ totals().pendientes }}</div>
-            <div class="fs-xxs text-muted mt-1">{{ totals().riesgoFlujo }} con alerta crédito alto</div>
           </div>
         </div>
       </div>
 
-      <!-- Filters -->
-      <div class="card-executive p-3 mb-3">
-        <div class="row g-2 align-items-center">
-          <div class="col-12 col-md-4">
-            <div class="input-group input-group-sm">
-              <span class="input-group-text bg-white text-muted border-end-0">
-                <i class="bi bi-search"></i>
-              </span>
-              <input
-                type="text"
-                class="form-control border-start-0"
-                placeholder="Buscar por Ref, Factura, Cliente, QR o OC..."
-                [ngModel]="searchQuery()"
-                (ngModelChange)="searchQuery.set($event)">
+      <!-- Main Unified Table Card with Integrated Search & Filter Toolbar -->
+      <div class="card-executive overflow-hidden mb-3">
+        
+        <!-- Integrated Toolbar Header -->
+        <div class="p-3 bg-slate-50 border-bottom border-slate-200">
+          <div class="row g-2 align-items-center">
+            <div class="col-12 col-md-4">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white text-muted border-end-0">
+                  <i class="bi bi-search"></i>
+                </span>
+                <input
+                  type="text"
+                  class="form-control border-start-0"
+                  placeholder="Buscar por Ref, Factura, Cliente o QR..."
+                  [ngModel]="searchQuery()"
+                  (ngModelChange)="searchQuery.set($event); billingPage.set(1)">
+                @if (searchQuery()) {
+                  <button class="btn btn-outline-secondary" type="button" (click)="searchQuery.set(''); billingPage.set(1)">
+                    <i class="bi bi-x"></i>
+                  </button>
+                }
+              </div>
+            </div>
+
+            <div class="col-6 col-md-3">
+              <select class="form-select form-select-sm" [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event); billingPage.set(1)">
+                <option value="ALL">Estado Cobro: Todos</option>
+                <option value="PENDIENTE_FACTURAR">Pendiente de Facturar</option>
+                <option value="FACTURADA">Facturada (Por Cobrar)</option>
+                <option value="COBRADA">Cobrada</option>
+              </select>
+            </div>
+
+            <div class="col-6 col-md-3">
+              <select class="form-select form-select-sm" [ngModel]="filterClient()" (ngModelChange)="filterClient.set($event); billingPage.set(1)">
+                <option value="ALL">Cliente: Todos</option>
+                <option value="CLI-001">Industrias Andinas</option>
+                <option value="CLI-002">Comercial Pacífico</option>
+              </select>
+            </div>
+
+            <div class="col-12 col-md-2 text-md-end d-flex align-items-center justify-content-between justify-content-md-end gap-2">
+              <span class="fs-xxs text-muted mono-font">Total: <strong>{{ filteredJobs().length }}</strong></span>
+              <button type="button" class="btn btn-sm btn-outline-secondary px-2" (click)="resetFilters()" title="Limpiar filtros">
+                <i class="bi bi-arrow-counterclockwise"></i>
+              </button>
             </div>
           </div>
-
-          <div class="col-6 col-md-3">
-            <select class="form-select form-select-sm" [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)">
-              <option value="ALL">Estado Cobro: Todos</option>
-              <option value="PENDIENTE_FACTURAR">Pendiente de Facturar</option>
-              <option value="FACTURADA">Facturada (Por Cobrar)</option>
-              <option value="COBRADA">Cobrada</option>
-            </select>
-          </div>
-
-          <div class="col-6 col-md-3">
-            <select class="form-select form-select-sm" [ngModel]="filterClient()" (ngModelChange)="filterClient.set($event)">
-              <option value="ALL">Todos los clientes</option>
-              <option value="CLI-001">Industrias Andinas</option>
-              <option value="CLI-002">Comercial Pacífico</option>
-            </select>
-          </div>
-
-          <div class="col-12 col-md-2 text-md-end">
-            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none fs-xxs text-muted" (click)="resetFilters()">
-              <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar filtros
-            </button>
-          </div>
         </div>
-      </div>
 
-      <!-- Billing Table -->
-      <div class="card-executive overflow-hidden">
+        <!-- Billing Table -->
         <div class="table-responsive">
           <table class="table table-arlogs align-middle mb-0">
             <thead>
               <tr>
                 <th>Ref / QR</th>
-                <th>Cliente &amp; Mod.</th>
-                <th>Pesos (Orig/Rec)</th>
+                <th>Cliente</th>
+                <th>Modalidad</th>
+                <th>Pesos (Orig / Rec)</th>
                 <th class="text-end">Cotizado</th>
                 <th class="text-end">Facturado Real</th>
                 <th class="text-end">Costo Real</th>
                 <th class="text-end">Profit Real</th>
-                <th>Plazo / Flujo</th>
+                <th>Plazo</th>
                 <th>Factura &amp; Cobro</th>
                 <th class="text-end">Acción</th>
               </tr>
             </thead>
             <tbody>
-              @for (job of filteredJobs(); track job.refArlogs) {
+              @for (job of paginatedJobs(); track job.refArlogs) {
                 @let profit = getProfit(job);
-                @let variance = (job.valorFacturadoReal ?? 0) - (job.valorVentaCotizado ?? 0);
-                <tr [class.row-alert]="isCashflowAlert(job)">
+                @let isBilled = !!job.facturaNumero;
+                <tr>
                   <td>
                     <strong class="text-primary mono-font">{{ job.refArlogs }}</strong>
                     <div class="fs-xxs text-muted mono-font">{{ job.qrCode }}</div>
                   </td>
                   <td>
-                    <div class="fw-semibold text-dark text-truncate" style="max-width: 150px;" [title]="job.cliente">{{ job.cliente }}</div>
-                    <span class="badge bg-slate-100 text-slate-700 border border-slate-200 mono-font fs-xxs">{{ job.servicio }}</span>
-                  </td>
-                  <td class="mono-font fs-xs text-nowrap">
-                    {{ job.pesoOrigen ?? '-' }} / {{ job.pesoRecibido ?? '-' }} kg
-                    @if (job.diferenciaPesoPct && job.diferenciaPesoPct !== 'N/A') {
-                      <span class="fs-xxs ms-1 badge bg-slate-100 text-dark border">{{ job.diferenciaPesoPct }}</span>
-                    }
-                  </td>
-                  <td class="text-end mono-font fw-semibold text-dark">
-                    \${{ (job.valorVentaCotizado ?? 0) | number:'1.0-0' }}
-                  </td>
-                  <td class="text-end mono-font">
-                    @if (job.valorFacturadoReal !== undefined) {
-                      <strong class="text-dark">\${{ job.valorFacturadoReal | number:'1.0-0' }}</strong>
-                      <div class="fs-xxs" [class.text-success]="variance >= 0" [class.text-danger]="variance < 0">
-                        {{ variance >= 0 ? '+' : '' }}{{ variance | number:'1.0-0' }} vs cot.
-                      </div>
-                    } @else {
-                      <span class="text-muted fs-xxs">Sin facturar</span>
-                    }
-                  </td>
-                  <td class="text-end mono-font text-muted">
-                    @if (job.costoReal !== undefined) {
-                      \${{ job.costoReal | number:'1.0-0' }}
-                    } @else {
-                      <span>Est. \${{ (job.costoEstimadoCotizado ?? 0) | number:'1.0-0' }}</span>
-                    }
-                  </td>
-                  <td class="text-end mono-font fw-bold" [class.text-success]="profit > 0" [class.text-danger]="profit < 0">
-                    @if (job.valorFacturadoReal !== undefined) {
-                      \${{ profit | number:'1.0-0' }}
-                    } @else {
-                      <span class="text-muted fw-normal">Est. \${{ ((job.valorVentaCotizado ?? 0) - (job.costoEstimadoCotizado ?? 0)) | number:'1.0-0' }}</span>
-                    }
+                    <div class="fw-semibold text-dark text-truncate" style="max-width: 140px;" [title]="job.cliente">
+                      {{ job.cliente }}
+                    </div>
                   </td>
                   <td>
-                    <span class="badge mono-font fs-xxs"
-                          [class.bg-amber-100]="isCashflowAlert(job)"
-                          [class.text-amber-800]="isCashflowAlert(job)"
-                          [class.bg-slate-100]="!isCashflowAlert(job)"
-                          [class.text-slate-700]="!isCashflowAlert(job)">
-                      {{ job.plazoPagoDias ?? 15 }} días
+                    <span class="badge bg-slate-100 text-slate-700 border border-slate-200 mono-font">{{ job.servicio }}</span>
+                  </td>
+                  <td>
+                    <div class="mono-font fs-xs text-dark">{{ job.pesoOrigen ?? '—' }} kg</div>
+                    <div class="mono-font fs-xxs text-muted">Rec: {{ job.pesoRecibido ?? '—' }} kg</div>
+                  </td>
+                  <td class="text-end mono-font fs-xs">
+                    \${{ (job.valorVentaCotizado ?? 0) | number:'1.0-0' }}
+                  </td>
+                  <td class="text-end mono-font fs-xs fw-bold" [class.text-success]="isBilled">
+                    {{ isBilled ? ('$' + (job.valorFacturadoReal | number:'1.0-0')) : '—' }}
+                  </td>
+                  <td class="text-end mono-font fs-xs text-muted">
+                    {{ job.costoReal !== undefined ? ('$' + (job.costoReal | number:'1.0-0')) : '—' }}
+                  </td>
+                  <td class="text-end mono-font fs-xs fw-bold" [class.text-success]="profit >= 0 && isBilled" [class.text-danger]="profit < 0 && isBilled">
+                    {{ isBilled ? ('$' + (profit | number:'1.0-0')) : '—' }}
+                  </td>
+                  <td>
+                    <span class="badge bg-slate-50 text-dark border border-slate-200 mono-font">
+                      {{ job.plazoPagoDias ?? 15 }}d
                     </span>
-                    @if (isCashflowAlert(job)) {
-                      <div class="fs-xxs text-danger fw-semibold mt-1">
-                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Alerta flujo
-                      </div>
-                    }
                   </td>
                   <td>
                     @if (job.facturaNumero) {
-                      <div class="mono-font fs-xs fw-semibold text-dark">{{ job.facturaNumero }}</div>
+                      <div class="mono-font fs-xs fw-bold text-dark">{{ job.facturaNumero }}</div>
+                      <span class="status-pill" [ngClass]="getCobroClass(job.estadoCobro)">
+                        <span class="dot"></span>{{ job.estadoCobro || 'FACTURADA' }}
+                      </span>
+                    } @else {
+                      <span class="badge-subtle badge-subtle-amber fs-xxs">
+                        Por Facturar
+                      </span>
                     }
-                    <span class="status-pill" [ngClass]="getCobroClass(job.estadoCobro)">
-                      <span class="dot"></span>{{ job.estadoCobro || 'PENDIENTE_FACTURAR' }}
-                    </span>
                   </td>
                   <td class="text-end">
                     <div class="d-inline-flex gap-1">
-                      <button type="button" class="btn btn-sm btn-brand-primary py-1 px-2 fs-xs" (click)="openInvoiceModal(job)">
-                        <i class="bi bi-receipt me-1"></i>{{ job.facturaNumero ? 'Editar' : 'Facturar' }}
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-primary py-1 px-2 fs-xs"
+                        (click)="openInvoiceModal(job)"
+                        title="Emitir o ajustar factura">
+                        <i class="bi bi-receipt"></i>
                       </button>
-                      @if (job.estadoCobro === 'FACTURADA') {
-                        <button type="button" class="btn btn-sm btn-outline-success py-1 px-2 fs-xs" (click)="markCollected(job)">
-                          <i class="bi bi-cash-coin me-1"></i>Cobrar
+
+                      @if (job.facturaNumero && job.estadoCobro !== 'COBRADA') {
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-success py-1 px-2 fs-xs"
+                          (click)="markCollected(job)"
+                          title="Registrar cobro efectivo">
+                          <i class="bi bi-cash-stack"></i>
                         </button>
                       }
                     </div>
@@ -219,60 +217,124 @@ import { ShipmentJob } from '../../models/shipment.model';
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="10" class="text-center py-4 text-muted">
-                    No existen registros de facturación para los filtros actuales.
+                  <td colspan="11" class="text-center py-4 text-muted">
+                    No se encontraron operaciones registradas con los filtros seleccionados.
                   </td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
+
+        <!-- Functional Pagination Footer -->
+        @if (filteredJobs().length > 0) {
+          <div class="p-2 px-3 bg-slate-50 border-top border-slate-200 d-flex align-items-center justify-content-between flex-wrap gap-2 fs-xs">
+            <div class="d-flex align-items-center gap-2 text-muted">
+              <span>
+                Mostrando <strong>{{ billingStartIndex() }}</strong>–<strong>{{ billingEndIndex() }}</strong> de <strong>{{ filteredJobs().length }}</strong> registros
+              </span>
+              <span class="d-none d-sm-inline">&bull;</span>
+              <div class="d-flex align-items-center gap-1 d-none d-sm-flex">
+                <span class="text-muted fs-xxs">Filas:</span>
+                <div class="btn-group btn-group-sm pagination-size-group">
+                  <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="billingPageSize() === 5" [class.btn-outline-secondary]="billingPageSize() !== 5" (click)="billingPageSize.set(5); billingPage.set(1)">5</button>
+                  <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="billingPageSize() === 6" [class.btn-outline-secondary]="billingPageSize() !== 6" (click)="billingPageSize.set(6); billingPage.set(1)">6</button>
+                  <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="billingPageSize() === 12" [class.btn-outline-secondary]="billingPageSize() !== 12" (click)="billingPageSize.set(12); billingPage.set(1)">12</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-1">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary py-0 px-2 fs-xs"
+                [disabled]="billingPage() === 1"
+                (click)="billingPage.set(billingPage() - 1)">
+                <i class="bi bi-chevron-left"></i>
+              </button>
+              @for (p of billingPageNumbers(); track p) {
+                <button
+                  type="button"
+                  class="btn btn-sm py-0 px-2 fs-xs"
+                  [class.btn-dark]="billingPage() === p"
+                  [class.btn-outline-secondary]="billingPage() !== p"
+                  (click)="billingPage.set(p)">
+                  {{ p }}
+                </button>
+              }
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary py-0 px-2 fs-xs"
+                [disabled]="billingPage() === totalBillingPages()"
+                (click)="billingPage.set(billingPage() + 1)">
+                <i class="bi bi-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+        }
       </div>
 
-      <!-- Issue / Edit Invoice Modal -->
+      <!-- Invoice Modal -->
       @if (editingJob()) {
-        <div class="modal-backdrop fade show"></div>
-        <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(4px);">
           <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-3">
-              <div class="modal-header bg-slate-900 text-white py-3 px-4">
-                <h6 class="modal-title fw-bold font-heading mb-0">
-                  <i class="bi bi-receipt-cutoff me-2 text-info"></i>Facturar Referencia {{ editingJob()?.refArlogs }}
-                </h6>
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              <div class="modal-header bg-slate-900 text-white border-0 py-3">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-receipt text-warning"></i>
+                  <h6 class="modal-title mb-0 fw-bold font-heading">
+                    Facturación: {{ editingJob()?.refArlogs }}
+                  </h6>
+                </div>
                 <button type="button" class="btn-close btn-close-white" (click)="editingJob.set(null)"></button>
               </div>
+
               <form (ngSubmit)="saveInvoice()">
-                <div class="modal-body p-4 bg-slate-50">
-                  <div class="p-2 px-3 bg-white border border-slate-200 rounded-2 mb-3 fs-xs">
-                    <div><strong>Cliente:</strong> {{ editingJob()?.cliente }}</div>
-                    <div class="text-muted">Cotizado: \${{ editingJob()?.valorVentaCotizado ?? 0 }} | Costo est.: \${{ editingJob()?.costoEstimadoCotizado ?? 0 }}</div>
-                  </div>
-                  <div class="row g-3">
-                    <div class="col-12">
-                      <label class="form-label fs-xs fw-bold text-dark">Número de Factura *</label>
-                      <input type="text" class="form-control mono-font" [(ngModel)]="invoiceForm.facturaNumero" name="facturaNumero" required>
+                <div class="modal-body p-4">
+                  <div class="d-flex flex-column gap-3">
+                    <div>
+                      <span class="fs-xs text-muted d-block">Cliente</span>
+                      <strong class="text-dark">{{ editingJob()?.cliente }}</strong>
                     </div>
-                    <div class="col-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Valor Facturado Real (USD) *</label>
-                      <input type="number" step="0.01" class="form-control mono-font" [(ngModel)]="invoiceForm.valorFacturadoReal" name="valorFacturadoReal" required>
+
+                    <div>
+                      <label class="form-label fs-xs fw-semibold">Número de Factura</label>
+                      <input type="text" class="form-control mono-font" [(ngModel)]="invoiceForm.facturaNumero" name="facturaNumero" required placeholder="FAC-001-00501">
                     </div>
-                    <div class="col-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Costo Real (USD) *</label>
-                      <input type="number" step="0.01" class="form-control mono-font" [(ngModel)]="invoiceForm.costoReal" name="costoReal" required>
+
+                    <div class="row g-2">
+                      <div class="col-6">
+                        <label class="form-label fs-xs fw-semibold text-primary">Monto Facturado (USD)</label>
+                        <div class="input-group input-group-sm">
+                          <span class="input-group-text">$</span>
+                          <input type="number" class="form-control mono-font fw-bold" [(ngModel)]="invoiceForm.valorFacturadoReal" name="valorFacturadoReal" min="0" step="10" required>
+                        </div>
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label fs-xs fw-semibold text-secondary">Costo Real (USD)</label>
+                        <div class="input-group input-group-sm">
+                          <span class="input-group-text">$</span>
+                          <input type="number" class="form-control mono-font" [(ngModel)]="invoiceForm.costoReal" name="costoReal" min="0" step="10" required>
+                        </div>
+                      </div>
                     </div>
-                    <div class="col-12">
-                      <label class="form-label fs-xs fw-bold text-dark">Estado de Cobro</label>
-                      <select class="form-select" [(ngModel)]="invoiceForm.estadoCobro" name="estadoCobro">
-                        <option value="FACTURADA">Facturada (Pendiente de cobro)</option>
+
+                    <div>
+                      <label class="form-label fs-xs fw-semibold">Estado de Cobro</label>
+                      <select class="form-select form-select-sm" [(ngModel)]="invoiceForm.estadoCobro" name="estadoCobro">
+                        <option value="FACTURADA">Facturada (Por cobrar)</option>
                         <option value="COBRADA">Cobrada</option>
                         <option value="VENCIDA">Vencida</option>
                       </select>
                     </div>
                   </div>
                 </div>
-                <div class="modal-footer bg-white border-top border-slate-200 py-2 px-4">
-                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="editingJob.set(null)">Cancelar</button>
-                  <button type="submit" class="btn btn-sm btn-brand-primary">Guardar Factura</button>
+
+                <div class="modal-footer bg-slate-50 border-top border-slate-200 py-2 px-4">
+                  <button type="button" class="btn btn-sm btn-light border" (click)="editingJob.set(null)">Cancelar</button>
+                  <button type="submit" class="btn btn-sm btn-brand-primary">
+                    <i class="bi bi-check-lg me-1"></i>Guardar Factura
+                  </button>
                 </div>
               </form>
             </div>
@@ -283,24 +345,38 @@ import { ShipmentJob } from '../../models/shipment.model';
     </div>
   `,
   styles: [`
+    .stat-icon { width: 32px; height: 32px; font-size: 1rem; }
     .bg-slate-50 { background-color: #F8FAFC !important; }
     .bg-slate-100 { background-color: #F1F5F9 !important; }
     .bg-slate-900 { background-color: #0F172A !important; }
+    .text-slate-500 { color: #64748B !important; }
     .text-slate-700 { color: #334155 !important; }
+    .border-slate-100 { border-color: #F1F5F9 !important; }
     .border-slate-200 { border-color: #E2E8F0 !important; }
-    .bg-amber-100 { background-color: #FEF3C7 !important; }
-    .text-amber-800 { color: #92400E !important; }
+    .bg-blue-50 { background-color: #EFF6FF !important; }
+    .bg-emerald-50 { background-color: #ECFDF5 !important; }
+    .bg-amber-50 { background-color: #FFFBEB !important; }
+
+    @media (min-width: 576px) {
+      .border-end-sm { border-right: 1px solid #E2E8F0; }
+    }
   `]
 })
 export class BillingViewComponent {
   private shipmentService = inject(ShipmentService);
   private toastService = inject(ToastService);
 
-  readonly jobs = this.shipmentService.jobs;
-  searchQuery = signal('');
-  filterStatus = signal('ALL');
-  filterClient = signal('ALL');
+  readonly jobs = this.shipmentService.authorizedJobs;
+
+  searchQuery = signal<string>('');
+  filterStatus = signal<string>('ALL');
+  filterClient = signal<string>('ALL');
+
   editingJob = signal<ShipmentJob | null>(null);
+
+  // Pagination
+  billingPage = signal(1);
+  billingPageSize = signal(6);
 
   invoiceForm: {
     facturaNumero: string;
@@ -315,25 +391,58 @@ export class BillingViewComponent {
   };
 
   readonly filteredJobs = computed(() => {
+    let list = this.jobs();
     const q = this.searchQuery().trim().toLowerCase();
-    const st = this.filterStatus();
-    const cli = this.filterClient();
-    return this.jobs().filter(j => {
-      if (st !== 'ALL' && (j.estadoCobro ?? 'PENDIENTE_FACTURAR') !== st) return false;
-      if (cli !== 'ALL' && j.clienteId !== cli) return false;
-      if (!q) return true;
-      return (
+    const status = this.filterStatus();
+    const client = this.filterClient();
+
+    if (client !== 'ALL') {
+      list = list.filter(j => j.clienteId === client);
+    }
+    if (status !== 'ALL') {
+      if (status === 'PENDIENTE_FACTURAR') {
+        list = list.filter(j => !j.facturaNumero);
+      } else {
+        list = list.filter(j => j.estadoCobro === status);
+      }
+    }
+    if (q) {
+      list = list.filter(j =>
         j.refArlogs.toLowerCase().includes(q) ||
         j.qrCode.toLowerCase().includes(q) ||
         j.cliente.toLowerCase().includes(q) ||
-        (j.facturaNumero?.toLowerCase().includes(q) ?? false) ||
-        j.ordenesCompra.some(o => o.toLowerCase().includes(q))
+        (j.facturaNumero && j.facturaNumero.toLowerCase().includes(q)) ||
+        j.ordenesCompra.some(oc => oc.toLowerCase().includes(q))
       );
-    });
+    }
+    return list;
+  });
+
+  readonly totalBillingPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredJobs().length / this.billingPageSize()))
+  );
+
+  readonly paginatedJobs = computed(() => {
+    const page = Math.min(this.billingPage(), this.totalBillingPages());
+    const start = (page - 1) * this.billingPageSize();
+    return this.filteredJobs().slice(start, start + this.billingPageSize());
+  });
+
+  readonly billingStartIndex = computed(() =>
+    this.filteredJobs().length === 0 ? 0 : (this.billingPage() - 1) * this.billingPageSize() + 1
+  );
+
+  readonly billingEndIndex = computed(() =>
+    Math.min(this.billingPage() * this.billingPageSize(), this.filteredJobs().length)
+  );
+
+  readonly billingPageNumbers = computed(() => {
+    const total = this.totalBillingPages();
+    return Array.from({ length: total }, (_, i) => i + 1);
   });
 
   readonly totals = computed(() => {
-    const list = this.filteredJobs();
+    const list = this.jobs();
     let cotizado = 0;
     let facturado = 0;
     let profitReal = 0;
@@ -343,10 +452,11 @@ export class BillingViewComponent {
     let riesgoFlujo = 0;
 
     for (const j of list) {
-      const c = j.valorVentaCotizado ?? 0;
+      const vc = j.valorVentaCotizado ?? 0;
       const ce = j.costoEstimadoCotizado ?? 0;
-      cotizado += c;
-      profitCotizado += c - ce;
+      cotizado += vc;
+      profitCotizado += vc - ce;
+
       if (j.valorFacturadoReal !== undefined) {
         facturado += j.valorFacturadoReal;
         profitReal += j.valorFacturadoReal - (j.costoReal ?? ce);
@@ -381,6 +491,7 @@ export class BillingViewComponent {
     this.searchQuery.set('');
     this.filterStatus.set('ALL');
     this.filterClient.set('ALL');
+    this.billingPage.set(1);
     this.toastService.info('Filtros restablecidos', 'Mostrando todas las operaciones facturables.');
   }
 
@@ -434,4 +545,3 @@ export class BillingViewComponent {
     this.toastService.success('Correcto — Exportado', `Conciliación financiera (${list.length} registros) descargada.`);
   }
 }
-

@@ -12,14 +12,9 @@ import { WarehouseId, WarehouseItem } from '../../models/shipment.model';
   template: `
     <div class="warehouse-view py-2">
 
-      <!-- Header -->
+      <!-- Header & Action -->
       <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-        <div>
-          <h5 class="fw-bold mb-0 text-dark font-heading">Bodegas &amp; Control Kardex (Operaciones 3)</h5>
-          <span class="fs-xs text-muted">
-            Inventario físico por conteo (sin costeo contable) en 2 bodegas arrendadas y emisión de Guías de Remisión
-          </span>
-        </div>
+        <h5 class="fw-bold mb-0 text-dark font-heading">Bodegas &amp; Control Kardex</h5>
 
         <button type="button" class="btn btn-sm btn-brand-primary d-flex align-items-center gap-1" (click)="openReceiptModal()">
           <i class="bi bi-box-arrow-in-down"></i>
@@ -27,102 +22,108 @@ import { WarehouseId, WarehouseItem } from '../../models/shipment.model';
         </button>
       </div>
 
-      <!-- KPI Cards -->
-      <div class="row g-3 mb-3">
-        <div class="col-6 col-lg-3">
-          <div class="card-executive p-3 h-100">
-            <div class="d-flex justify-content-between align-items-center text-muted fs-xs mb-1">
-              <span class="fw-semibold text-uppercase">Bodega Norte</span>
-              <i class="bi bi-building text-primary"></i>
+      <!-- Unified KPI Stat Strip (Space-optimized) -->
+      <div class="stat-ribbon bg-white border border-slate-200 rounded-3 p-3 mb-3 shadow-xs">
+        <div class="row g-2 align-items-center text-center text-sm-start">
+          <div class="col-6 col-md-3 border-end-sm">
+            <div class="d-flex align-items-center gap-2 justify-content-center justify-content-sm-start">
+              <div class="stat-icon bg-slate-100 text-dark rounded-2 d-flex align-items-center justify-content-center">
+                <i class="bi bi-building"></i>
+              </div>
+              <div>
+                <span class="fs-xxs text-muted text-uppercase fw-semibold d-block">Bodega Norte (GYE)</span>
+                <span class="fs-5 fw-bold mono-font text-dark">{{ summary().b1Units }} u.</span>
+              </div>
             </div>
-            <div class="fs-4 fw-bold text-dark mono-font">{{ summary().b1Units }}</div>
-            <div class="fs-xxs text-muted mt-1">{{ summary().b1Lots }} lote(s) con saldo</div>
           </div>
-        </div>
-
-        <div class="col-6 col-lg-3">
-          <div class="card-executive p-3 h-100">
-            <div class="d-flex justify-content-between align-items-center text-muted fs-xs mb-1">
-              <span class="fw-semibold text-uppercase">Bodega Sur (Puerto)</span>
-              <i class="bi bi-building-check text-info"></i>
+          <div class="col-6 col-md-3 border-end-sm">
+            <div class="d-flex align-items-center gap-2 justify-content-center justify-content-sm-start">
+              <div class="stat-icon bg-blue-50 text-primary rounded-2 d-flex align-items-center justify-content-center">
+                <i class="bi bi-building-check"></i>
+              </div>
+              <div>
+                <span class="fs-xxs text-muted text-uppercase fw-semibold d-block">Bodega Sur (Puerto)</span>
+                <span class="fs-5 fw-bold mono-font text-primary">{{ summary().b2Units }} u.</span>
+              </div>
             </div>
-            <div class="fs-4 fw-bold text-info mono-font">{{ summary().b2Units }}</div>
-            <div class="fs-xxs text-muted mt-1">{{ summary().b2Lots }} lote(s) con saldo</div>
           </div>
-        </div>
-
-        <div class="col-6 col-lg-3">
-          <div class="card-executive p-3 h-100">
-            <div class="d-flex justify-content-between align-items-center text-muted fs-xs mb-1">
-              <span class="fw-semibold text-uppercase">Saldo Total Kardex</span>
-              <i class="bi bi-boxes text-success"></i>
+          <div class="col-6 col-md-3 border-end-sm">
+            <div class="d-flex align-items-center gap-2 justify-content-center justify-content-sm-start">
+              <div class="stat-icon bg-emerald-50 text-success rounded-2 d-flex align-items-center justify-content-center">
+                <i class="bi bi-boxes"></i>
+              </div>
+              <div>
+                <span class="fs-xxs text-muted text-uppercase fw-semibold d-block">Saldo Disponible</span>
+                <span class="fs-5 fw-bold mono-font text-success">{{ summary().totalAvailable }} u.</span>
+              </div>
             </div>
-            <div class="fs-4 fw-bold text-success mono-font">{{ summary().totalAvailable }}</div>
-            <div class="fs-xxs text-muted mt-1">Unidades/bultos físicos disponibles</div>
           </div>
-        </div>
-
-        <div class="col-6 col-lg-3">
-          <div class="card-executive p-3 h-100">
-            <div class="d-flex justify-content-between align-items-center text-muted fs-xs mb-1">
-              <span class="fw-semibold text-uppercase">Movimientos Kardex</span>
-              <i class="bi bi-file-earmark-text text-warning"></i>
+          <div class="col-6 col-md-3">
+            <div class="d-flex align-items-center gap-2 justify-content-center justify-content-sm-start">
+              <div class="stat-icon bg-amber-50 text-warning rounded-2 d-flex align-items-center justify-content-center">
+                <i class="bi bi-file-earmark-text"></i>
+              </div>
+              <div>
+                <span class="fs-xxs text-muted text-uppercase fw-semibold d-block">Movimientos</span>
+                <span class="fs-5 fw-bold mono-font text-dark">{{ movements().length }}</span>
+              </div>
             </div>
-            <div class="fs-4 fw-bold text-dark mono-font">{{ movements().length }}</div>
-            <div class="fs-xxs text-muted mt-1">Entradas y Guías de Remisión</div>
           </div>
         </div>
       </div>
 
-      <!-- Filters -->
-      <div class="card-executive p-3 mb-3">
-        <div class="row g-2 align-items-center">
-          <div class="col-12 col-md-4">
-            <div class="input-group input-group-sm">
-              <span class="input-group-text bg-white text-muted border-end-0">
-                <i class="bi bi-search"></i>
-              </span>
-              <input
-                type="text"
-                class="form-control border-start-0"
-                placeholder="Buscar por OC, Descripción, Rack o Guía..."
-                [ngModel]="searchQuery()"
-                (ngModelChange)="searchQuery.set($event)">
-            </div>
-          </div>
-
-          <div class="col-6 col-md-3">
-            <select class="form-select form-select-sm" [ngModel]="filterWarehouse()" (ngModelChange)="filterWarehouse.set($event)">
-              <option value="ALL">Todas las bodegas (2)</option>
-              <option value="BODEGA_1">Bodega Norte (GYE)</option>
-              <option value="BODEGA_2">Bodega Sur (Puerto)</option>
-            </select>
-          </div>
-
-          <div class="col-6 col-md-3">
-            <select class="form-select form-select-sm" [ngModel]="filterState()" (ngModelChange)="filterState.set($event)">
-              <option value="ALL">Todos los estados</option>
-              <option value="EN_BODEGA">En Bodega (Completo)</option>
-              <option value="PARCIAL">Despacho Parcial</option>
-              <option value="DESPACHADO">Despachado (Saldo 0)</option>
-            </select>
-          </div>
-
-          <div class="col-12 col-md-2 text-md-end">
-            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none fs-xxs text-muted" (click)="resetFilters()">
-              <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar filtros
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Stock Table -->
+      <!-- Main Unified Table Card with Integrated Toolbar & Pagination -->
       <div class="card-executive overflow-hidden mb-3">
-        <div class="p-3 border-bottom border-slate-200 d-flex align-items-center justify-content-between">
-          <h6 class="fw-bold mb-0 text-dark">Existencias Actuales en Kardex</h6>
-          <span class="badge bg-slate-100 text-slate-700 border fs-xxs">Control Físico Entrada/Salida</span>
+        
+        <!-- Integrated Toolbar Header -->
+        <div class="p-3 bg-slate-50 border-bottom border-slate-200">
+          <div class="row g-2 align-items-center">
+            <div class="col-12 col-md-4">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white text-muted border-end-0">
+                  <i class="bi bi-search"></i>
+                </span>
+                <input
+                  type="text"
+                  class="form-control border-start-0"
+                  placeholder="Buscar por OC, Descripción, Rack o Guía..."
+                  [ngModel]="searchQuery()"
+                  (ngModelChange)="searchQuery.set($event); whPage.set(1)">
+                @if (searchQuery()) {
+                  <button class="btn btn-outline-secondary" type="button" (click)="searchQuery.set(''); whPage.set(1)">
+                    <i class="bi bi-x"></i>
+                  </button>
+                }
+              </div>
+            </div>
+
+            <div class="col-6 col-md-3">
+              <select class="form-select form-select-sm" [ngModel]="filterWarehouse()" (ngModelChange)="filterWarehouse.set($event); whPage.set(1)">
+                <option value="ALL">Todas las bodegas (2)</option>
+                <option value="BODEGA_1">Bodega Norte (GYE)</option>
+                <option value="BODEGA_2">Bodega Sur (Puerto)</option>
+              </select>
+            </div>
+
+            <div class="col-6 col-md-3">
+              <select class="form-select form-select-sm" [ngModel]="filterState()" (ngModelChange)="filterState.set($event); whPage.set(1)">
+                <option value="ALL">Todos los estados</option>
+                <option value="EN_BODEGA">En Bodega (Completo)</option>
+                <option value="PARCIAL">Despacho Parcial</option>
+                <option value="DESPACHADO">Despachado (Saldo 0)</option>
+              </select>
+            </div>
+
+            <div class="col-12 col-md-2 text-md-end d-flex align-items-center justify-content-between justify-content-md-end gap-2">
+              <span class="fs-xxs text-muted mono-font">Lotes: <strong>{{ filteredItems().length }}</strong></span>
+              <button type="button" class="btn btn-sm btn-outline-secondary px-2" (click)="resetFilters()" title="Limpiar filtros">
+                <i class="bi bi-arrow-counterclockwise"></i>
+              </button>
+            </div>
+          </div>
         </div>
 
+        <!-- Stock Table -->
         <div class="table-responsive">
           <table class="table table-arlogs align-middle mb-0">
             <thead>
@@ -135,32 +136,31 @@ import { WarehouseId, WarehouseItem } from '../../models/shipment.model';
                 <th class="text-end">Disponible</th>
                 <th>Peso (kg)</th>
                 <th>Estado / Guía</th>
-                <th class="text-end">Despacho</th>
+                <th class="text-end">Acción</th>
               </tr>
             </thead>
             <tbody>
-              @for (item of filteredItems(); track item.id) {
+              @for (item of paginatedItems(); track item.id) {
                 <tr>
                   <td>
-                    <strong class="text-primary mono-font">{{ item.id }}</strong>
-                    <div class="fs-xxs text-muted mono-font">{{ item.refArlogs }}</div>
+                    <span class="badge bg-slate-900 text-info mono-font fs-xs">{{ item.id }}</span>
+                    <div class="fs-xxs text-muted mono-font">{{ item.fechaIngreso }}</div>
                   </td>
                   <td>
                     <div class="fw-semibold text-dark fs-xs">{{ item.bodegaNombre }}</div>
-                    <span class="badge bg-slate-50 text-dark border mono-font fs-xxs">{{ item.ubicacionRack }}</span>
+                    <span class="badge bg-white text-dark border border-slate-200 mono-font fs-xxs">
+                      <i class="bi bi-geo-alt me-1 text-primary"></i>{{ item.ubicacionRack }}
+                    </span>
                   </td>
                   <td>
-                    <div class="fw-semibold text-dark text-truncate" style="max-width: 150px;" [title]="item.cliente">{{ item.cliente }}</div>
-                    <span class="badge bg-slate-100 text-dark border mono-font fs-xxs">{{ item.ordenCompra }}</span>
+                    <div class="fw-semibold text-dark fs-xs text-truncate" style="max-width: 150px;">{{ item.cliente }}</div>
+                    <span class="mono-font badge bg-slate-100 text-dark border border-slate-200 fs-xxs">{{ item.ordenCompra }}</span>
                   </td>
                   <td>
-                    <div class="text-dark fs-xs">{{ item.descripcion }}</div>
-                    <div class="fs-xxs text-muted">Ingreso: {{ item.fechaIngreso }}</div>
+                    <div class="text-dark fs-xs text-truncate" style="max-width: 200px;" [title]="item.descripcion">{{ item.descripcion }}</div>
                   </td>
-                  <td class="text-end mono-font text-muted">
-                    {{ item.cantidadInicial }} {{ item.unidad }}
-                  </td>
-                  <td class="text-end mono-font fw-bold" [class.text-success]="item.cantidadDisponible > 0" [class.text-muted]="item.cantidadDisponible === 0">
+                  <td class="text-end mono-font fs-xs">{{ item.cantidadInicial }} {{ item.unidad }}</td>
+                  <td class="text-end mono-font fs-xs fw-bold" [class.text-success]="item.cantidadDisponible > 0" [class.text-muted]="item.cantidadDisponible === 0">
                     {{ item.cantidadDisponible }} {{ item.unidad }}
                   </td>
                   <td class="mono-font fs-xs">{{ item.pesoKg }} kg</td>
@@ -169,144 +169,159 @@ import { WarehouseId, WarehouseItem } from '../../models/shipment.model';
                       <span class="dot"></span>{{ item.estado }}
                     </span>
                     @if (item.ultimaGuiaRemision) {
-                      <div class="fs-xxs text-muted mono-font mt-1">Últ. {{ item.ultimaGuiaRemision }}</div>
+                      <div class="mono-font fs-xxs text-muted mt-1">Guía: {{ item.ultimaGuiaRemision }}</div>
                     }
                   </td>
                   <td class="text-end">
-                    @if (item.cantidadDisponible > 0) {
-                      <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 fs-xs" (click)="openDispatchModal(item)">
-                        <i class="bi bi-truck me-1"></i>Guía Remisión
-                      </button>
-                    } @else {
-                      <span class="badge bg-slate-100 text-muted border fs-xxs">Sin saldo</span>
-                    }
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-primary py-1 px-2 fs-xs"
+                      [disabled]="item.cantidadDisponible <= 0"
+                      (click)="openDispatchModal(item)"
+                      title="Emitir Guía de Remisión">
+                      <i class="bi bi-truck me-1"></i>Despacho
+                    </button>
                   </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="9" class="text-center py-4 text-muted">No hay inventario que coincida con los filtros.</td>
+                  <td colspan="9" class="text-center py-4 text-muted">
+                    No se encontraron registros de Kardex con los filtros aplicados.
+                  </td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
-      </div>
 
-      <!-- Recent Kardex Movements -->
-      <div class="card-executive overflow-hidden">
-        <div class="p-3 border-bottom border-slate-200 d-flex align-items-center justify-content-between">
-          <h6 class="fw-bold mb-0 text-dark">Bitácora de Entradas y Salidas (Guías de Remisión)</h6>
-          <span class="fs-xxs text-muted">{{ movements().length }} movimientos</span>
-        </div>
-        <div class="table-responsive">
-          <table class="table table-arlogs align-middle mb-0">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Tipo</th>
-                <th>Guía / Documento</th>
-                <th>Bodega</th>
-                <th>OC / Cliente</th>
-                <th class="text-end">Cantidad</th>
-                <th>Transporte / Obs.</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (m of movements(); track m.id) {
-                <tr>
-                  <td class="mono-font fs-xxs text-muted text-nowrap">{{ m.fecha }}</td>
-                  <td>
-                    <span class="badge mono-font fs-xxs"
-                          [class.bg-success]="m.tipo === 'INGRESO'"
-                          [class.bg-primary]="m.tipo === 'SALIDA'">
-                      {{ m.tipo }}
-                    </span>
-                  </td>
-                  <td class="mono-font fs-xs fw-bold text-dark">{{ m.guiaRemision }}</td>
-                  <td class="fs-xs">{{ m.bodegaNombre }}</td>
-                  <td>
-                    <span class="badge bg-slate-100 text-dark border mono-font fs-xxs me-1">{{ m.ordenCompra }}</span>
-                    <span class="fs-xxs text-muted">{{ m.cliente }}</span>
-                  </td>
-                  <td class="text-end mono-font fw-bold" [class.text-success]="m.tipo === 'INGRESO'" [class.text-primary]="m.tipo === 'SALIDA'">
-                    {{ m.tipo === 'INGRESO' ? '+' : '-' }}{{ m.cantidad }}
-                  </td>
-                  <td class="fs-xs text-muted">
-                    @if (m.transporteInland) {
-                      <strong class="text-dark">{{ m.transporteInland }}</strong> &bull;
-                    }
-                    {{ m.observacion }}
-                  </td>
-                </tr>
+        <!-- Functional Pagination Footer -->
+        @if (filteredItems().length > 0) {
+          <div class="p-2 px-3 bg-slate-50 border-top border-slate-200 d-flex align-items-center justify-content-between flex-wrap gap-2 fs-xs">
+            <div class="d-flex align-items-center gap-2 text-muted">
+              <span>
+                Mostrando <strong>{{ whStartIndex() }}</strong>–<strong>{{ whEndIndex() }}</strong> de <strong>{{ filteredItems().length }}</strong> lotes
+              </span>
+              <span class="d-none d-sm-inline">&bull;</span>
+              <div class="d-flex align-items-center gap-1 d-none d-sm-flex">
+                <span class="text-muted fs-xxs">Filas:</span>
+                <div class="btn-group btn-group-sm pagination-size-group">
+                  <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="whPageSize() === 5" [class.btn-outline-secondary]="whPageSize() !== 5" (click)="whPageSize.set(5); whPage.set(1)">5</button>
+                  <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="whPageSize() === 6" [class.btn-outline-secondary]="whPageSize() !== 6" (click)="whPageSize.set(6); whPage.set(1)">6</button>
+                  <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="whPageSize() === 12" [class.btn-outline-secondary]="whPageSize() !== 12" (click)="whPageSize.set(12); whPage.set(1)">12</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-1">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary py-0 px-2 fs-xs"
+                [disabled]="whPage() === 1"
+                (click)="whPage.set(whPage() - 1)">
+                <i class="bi bi-chevron-left"></i>
+              </button>
+              @for (p of whPageNumbers(); track p) {
+                <button
+                  type="button"
+                  class="btn btn-sm py-0 px-2 fs-xs"
+                  [class.btn-dark]="whPage() === p"
+                  [class.btn-outline-secondary]="whPage() !== p"
+                  (click)="whPage.set(p)">
+                  {{ p }}
+                </button>
               }
-            </tbody>
-          </table>
-        </div>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary py-0 px-2 fs-xs"
+                [disabled]="whPage() === totalWhPages()"
+                (click)="whPage.set(whPage() + 1)">
+                <i class="bi bi-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+        }
       </div>
 
       <!-- Receipt Modal -->
       @if (showReceiptModal) {
-        <div class="modal-backdrop fade show"></div>
-        <div class="modal fade show d-block" tabindex="-1">
-          <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-3">
-              <div class="modal-header bg-slate-900 text-white py-3 px-4">
-                <h6 class="modal-title fw-bold font-heading mb-0">
-                  <i class="bi bi-box-arrow-in-down me-2 text-info"></i>Registrar Conteo e Ingreso Kardex
-                </h6>
+        <div class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(4px);">
+          <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              <div class="modal-header bg-slate-900 text-white border-0 py-3">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-box-arrow-in-down text-warning"></i>
+                  <h6 class="modal-title mb-0 fw-bold font-heading">Registrar Ingreso a Bodega (Kardex Físico)</h6>
+                </div>
                 <button type="button" class="btn-close btn-close-white" (click)="showReceiptModal = false"></button>
               </div>
+
               <form (ngSubmit)="submitReceipt()">
-                <div class="modal-body p-4 bg-slate-50">
+                <div class="modal-body p-4">
                   <div class="row g-3">
-                    <div class="col-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Almacén / Bodega *</label>
+                    <div class="col-12 col-md-6">
+                      <label class="form-label fs-xs fw-semibold">Bodega de Destino</label>
                       <select class="form-select" [(ngModel)]="receiptForm.bodegaId" name="bodegaId">
-                        <option value="BODEGA_1">Bodega Norte (GYE)</option>
-                        <option value="BODEGA_2">Bodega Sur (Puerto)</option>
+                        <option value="BODEGA_1">Bodega Norte (Av. Juan Tanca Marengo, GYE)</option>
+                        <option value="BODEGA_2">Bodega Sur — Puerto Marítimo (GYE)</option>
                       </select>
                     </div>
-                    <div class="col-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Cliente *</label>
+
+                    <div class="col-12 col-md-6">
+                      <label class="form-label fs-xs fw-semibold">Empresa Cliente</label>
                       <select class="form-select" [(ngModel)]="receiptForm.clienteId" name="clienteId">
-                        <option value="CLI-001">Industrias Andinas</option>
-                        <option value="CLI-002">Comercial Pacífico</option>
+                        <option value="CLI-001">Industrias Andinas S.A. (CLI-001)</option>
+                        <option value="CLI-002">Comercial Pacífico Cía. Ltda. (CLI-002)</option>
                       </select>
                     </div>
-                    <div class="col-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Orden de Compra (OC) *</label>
-                      <input type="text" class="form-control mono-font" [(ngModel)]="receiptForm.ordenCompra" name="ordenCompra" placeholder="OC-1015" required>
+
+                    <div class="col-12 col-md-6">
+                      <label class="form-label fs-xs fw-semibold">Orden de Compra</label>
+                      <input type="text" class="form-control mono-font" [(ngModel)]="receiptForm.ordenCompra" name="ordenCompra" placeholder="OC-7001" required>
                     </div>
-                    <div class="col-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Ref ARLOGS / Inland</label>
+
+                    <div class="col-12 col-md-6">
+                      <label class="form-label fs-xs fw-semibold">Referencia Embarque (Opcional)</label>
                       <input type="text" class="form-control mono-font" [(ngModel)]="receiptForm.refArlogs" name="refArlogs" placeholder="I901-2026">
                     </div>
+
                     <div class="col-12">
-                      <label class="form-label fs-xs fw-bold text-dark">Descripción de Mercadería *</label>
-                      <input type="text" class="form-control" [(ngModel)]="receiptForm.descripcion" name="descripcion" placeholder="Ej. Motores trifásicos embalados" required>
+                      <label class="form-label fs-xs fw-semibold">Descripción del Producto / Lote</label>
+                      <input type="text" class="form-control" [(ngModel)]="receiptForm.descripcion" name="descripcion" placeholder="Ej. Filtros hidráulicos de alta presión" required>
                     </div>
-                    <div class="col-4">
-                      <label class="form-label fs-xs fw-bold text-dark">Cantidad *</label>
+
+                    <div class="col-6 col-md-4">
+                      <label class="form-label fs-xs fw-semibold">Cantidad Ingresada</label>
                       <input type="number" class="form-control mono-font" [(ngModel)]="receiptForm.cantidad" name="cantidad" min="1" required>
                     </div>
-                    <div class="col-4">
-                      <label class="form-label fs-xs fw-bold text-dark">Unidad *</label>
+
+                    <div class="col-6 col-md-4">
+                      <label class="form-label fs-xs fw-semibold">Unidad de Medida</label>
                       <select class="form-select" [(ngModel)]="receiptForm.unidad" name="unidad">
                         <option value="Cajas">Cajas</option>
                         <option value="Pallets">Pallets</option>
                         <option value="Bultos">Bultos</option>
-                        <option value="Unidades">Unidades</option>
+                        <option value="Tambores">Tambores</option>
+                        <option value="Piezas">Piezas</option>
                       </select>
                     </div>
-                    <div class="col-4">
-                      <label class="form-label fs-xs fw-bold text-dark">Ubicación Rack</label>
-                      <input type="text" class="form-control mono-font" [(ngModel)]="receiptForm.ubicacionRack" name="ubicacionRack" placeholder="RACK-A01">
+
+                    <div class="col-6 col-md-4">
+                      <label class="form-label fs-xs fw-semibold">Peso Total (kg)</label>
+                      <input type="number" class="form-control mono-font" [(ngModel)]="receiptForm.pesoKg" name="pesoKg" min="1">
+                    </div>
+
+                    <div class="col-6 col-md-4">
+                      <label class="form-label fs-xs fw-semibold">Ubicación Rack / Pasillo</label>
+                      <input type="text" class="form-control mono-font" [(ngModel)]="receiptForm.ubicacionRack" name="ubicacionRack" placeholder="RACK-B02">
                     </div>
                   </div>
                 </div>
-                <div class="modal-footer bg-white border-top border-slate-200 py-2 px-4">
-                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="showReceiptModal = false">Cancelar</button>
-                  <button type="submit" class="btn btn-sm btn-brand-primary">Guardar Ingreso</button>
+
+                <div class="modal-footer bg-slate-50 border-top border-slate-200 py-2 px-4">
+                  <button type="button" class="btn btn-sm btn-light border" (click)="showReceiptModal = false">Cancelar</button>
+                  <button type="submit" class="btn btn-sm btn-brand-primary">
+                    <i class="bi bi-check-lg me-1"></i>Registrar Ingreso
+                  </button>
                 </div>
               </form>
             </div>
@@ -314,46 +329,73 @@ import { WarehouseId, WarehouseItem } from '../../models/shipment.model';
         </div>
       }
 
-      <!-- Dispatch / Guía de Remisión Modal -->
+      <!-- Dispatch Modal -->
       @if (dispatchTarget()) {
-        <div class="modal-backdrop fade show"></div>
-        <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(4px);">
           <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-3">
-              <div class="modal-header bg-slate-900 text-white py-3 px-4">
-                <h6 class="modal-title fw-bold font-heading mb-0">
-                  <i class="bi bi-truck me-2 text-info"></i>Emitir Guía de Remisión — {{ dispatchTarget()?.ordenCompra }}
-                </h6>
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              <div class="modal-header bg-slate-900 text-white border-0 py-3">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-truck text-warning"></i>
+                  <h6 class="modal-title mb-0 fw-bold font-heading">
+                    Emitir Guía de Remisión — {{ dispatchTarget()?.id }}
+                  </h6>
+                </div>
                 <button type="button" class="btn-close btn-close-white" (click)="dispatchTarget.set(null)"></button>
               </div>
+
               <form (ngSubmit)="submitDispatch()">
-                <div class="modal-body p-4 bg-slate-50">
-                  <div class="p-2 px-3 bg-white border border-slate-200 rounded-2 mb-3 fs-xs">
-                    <div><strong>{{ dispatchTarget()?.descripcion }}</strong></div>
-                    <div class="text-muted">Disponible: {{ dispatchTarget()?.cantidadDisponible }} {{ dispatchTarget()?.unidad }} en {{ dispatchTarget()?.bodegaNombre }}</div>
-                  </div>
-                  <div class="row g-3">
-                    <div class="col-6">
-                      <label class="form-label fs-xs fw-bold text-dark">N° Guía de Remisión *</label>
+                <div class="modal-body p-4">
+                  <div class="d-flex flex-column gap-3">
+                    <div class="bg-slate-50 border border-slate-200 rounded-3 p-3 fs-xs">
+                      <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Producto</span>
+                        <strong class="text-dark">{{ dispatchTarget()?.descripcion }}</strong>
+                      </div>
+                      <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Disponible en Rack</span>
+                        <strong class="mono-font text-success">{{ dispatchTarget()?.cantidadDisponible }} {{ dispatchTarget()?.unidad }}</strong>
+                      </div>
+                      <div class="d-flex justify-content-between">
+                        <span class="text-muted">Cliente</span>
+                        <span class="text-dark">{{ dispatchTarget()?.cliente }}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="form-label fs-xs fw-semibold">Número de Guía de Remisión (SRI / ARLOGS)</label>
                       <input type="text" class="form-control mono-font" [(ngModel)]="dispatchForm.guiaRemision" name="guiaRemision" required>
                     </div>
-                    <div class="col-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Cantidad a Retirar *</label>
-                      <input type="number" class="form-control mono-font" [(ngModel)]="dispatchForm.cantidadSalida" name="cantidadSalida" min="1" [max]="dispatchTarget()?.cantidadDisponible || 1" required>
+
+                    <div>
+                      <label class="form-label fs-xs fw-semibold">Cantidad a Despachar ({{ dispatchTarget()?.unidad }})</label>
+                      <input
+                        type="number"
+                        class="form-control mono-font fw-bold"
+                        [(ngModel)]="dispatchForm.cantidadSalida"
+                        name="cantidadSalida"
+                        min="1"
+                        [max]="dispatchTarget()?.cantidadDisponible ?? 1"
+                        required>
                     </div>
-                    <div class="col-12">
-                      <label class="form-label fs-xs fw-bold text-dark">Transporte Interno (Inland) / Placa *</label>
-                      <input type="text" class="form-control" [(ngModel)]="dispatchForm.transporteInland" name="transporteInland" placeholder="Ej. Inland I902-2026 / Placa GSY-5120" required>
+
+                    <div>
+                      <label class="form-label fs-xs fw-semibold">Transportista / Placa / Inland</label>
+                      <input type="text" class="form-control" [(ngModel)]="dispatchForm.transporteInland" name="transporteInland" placeholder="Ej. Camión Hino GBD-4512">
                     </div>
-                    <div class="col-12">
-                      <label class="form-label fs-xs fw-bold text-dark">Observación de Entrega</label>
-                      <input type="text" class="form-control" [(ngModel)]="dispatchForm.observacion" name="observacion" placeholder="Ej. Despacho autorizado a planta destino">
+
+                    <div>
+                      <label class="form-label fs-xs fw-semibold">Observación</label>
+                      <input type="text" class="form-control" [(ngModel)]="dispatchForm.observacion" name="observacion" placeholder="Entrega en planta matriz">
                     </div>
                   </div>
                 </div>
-                <div class="modal-footer bg-white border-top border-slate-200 py-2 px-4">
-                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="dispatchTarget.set(null)">Cancelar</button>
-                  <button type="submit" class="btn btn-sm btn-brand-primary">Emitir Guía &amp; Descontar</button>
+
+                <div class="modal-footer bg-slate-50 border-top border-slate-200 py-2 px-4">
+                  <button type="button" class="btn btn-sm btn-light border" (click)="dispatchTarget.set(null)">Cancelar</button>
+                  <button type="submit" class="btn btn-sm btn-brand-primary">
+                    <i class="bi bi-check-lg me-1"></i>Generar Guía y Despachar
+                  </button>
                 </div>
               </form>
             </div>
@@ -364,11 +406,21 @@ import { WarehouseId, WarehouseItem } from '../../models/shipment.model';
     </div>
   `,
   styles: [`
+    .stat-icon { width: 32px; height: 32px; font-size: 1rem; }
     .bg-slate-50 { background-color: #F8FAFC !important; }
     .bg-slate-100 { background-color: #F1F5F9 !important; }
     .bg-slate-900 { background-color: #0F172A !important; }
+    .text-slate-500 { color: #64748B !important; }
     .text-slate-700 { color: #334155 !important; }
+    .border-slate-100 { border-color: #F1F5F9 !important; }
     .border-slate-200 { border-color: #E2E8F0 !important; }
+    .bg-blue-50 { background-color: #EFF6FF !important; }
+    .bg-emerald-50 { background-color: #ECFDF5 !important; }
+    .bg-amber-50 { background-color: #FFFBEB !important; }
+
+    @media (min-width: 576px) {
+      .border-end-sm { border-right: 1px solid #E2E8F0; }
+    }
   `]
 })
 export class WarehouseViewComponent {
@@ -378,17 +430,21 @@ export class WarehouseViewComponent {
   readonly items = this.shipmentService.warehouseItems;
   readonly movements = this.shipmentService.warehouseMovements;
 
-  searchQuery = signal('');
-  filterWarehouse = signal<'ALL' | WarehouseId>('ALL');
-  filterState = signal('ALL');
+  searchQuery = signal<string>('');
+  filterWarehouse = signal<WarehouseId | 'ALL'>('ALL');
+  filterState = signal<string>('ALL');
 
   showReceiptModal = false;
   dispatchTarget = signal<WarehouseItem | null>(null);
 
+  // Pagination
+  whPage = signal(1);
+  whPageSize = signal(6);
+
   receiptForm: {
     bodegaId: WarehouseId;
     clienteId: string;
-    refArlogs: string;
+    refArlogs?: string;
     ordenCompra: string;
     descripcion: string;
     cantidad: number;
@@ -403,13 +459,13 @@ export class WarehouseViewComponent {
     descripcion: '',
     cantidad: 10,
     unidad: 'Cajas',
-    pesoKg: 120,
-    ubicacionRack: 'RACK-A05'
+    pesoKg: 100,
+    ubicacionRack: 'RACK-A01'
   };
 
   dispatchForm = {
     guiaRemision: '',
-    cantidadSalida: 1,
+    cantidadSalida: 0,
     transporteInland: '',
     observacion: ''
   };
@@ -431,6 +487,29 @@ export class WarehouseViewComponent {
         (i.ultimaGuiaRemision?.toLowerCase().includes(q) ?? false)
       );
     });
+  });
+
+  readonly totalWhPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredItems().length / this.whPageSize()))
+  );
+
+  readonly paginatedItems = computed(() => {
+    const page = Math.min(this.whPage(), this.totalWhPages());
+    const start = (page - 1) * this.whPageSize();
+    return this.filteredItems().slice(start, start + this.whPageSize());
+  });
+
+  readonly whStartIndex = computed(() =>
+    this.filteredItems().length === 0 ? 0 : (this.whPage() - 1) * this.whPageSize() + 1
+  );
+
+  readonly whEndIndex = computed(() =>
+    Math.min(this.whPage() * this.whPageSize(), this.filteredItems().length)
+  );
+
+  readonly whPageNumbers = computed(() => {
+    const total = this.totalWhPages();
+    return Array.from({ length: total }, (_, i) => i + 1);
   });
 
   readonly summary = computed(() => {
@@ -460,6 +539,7 @@ export class WarehouseViewComponent {
     this.searchQuery.set('');
     this.filterWarehouse.set('ALL');
     this.filterState.set('ALL');
+    this.whPage.set(1);
     this.toastService.info('Filtros restablecidos', 'Mostrando las 2 bodegas y todo el Kardex.');
   }
 
@@ -489,6 +569,7 @@ export class WarehouseViewComponent {
     try {
       const created = this.shipmentService.registerWarehouseReceipt({
         ...this.receiptForm,
+        refArlogs: this.receiptForm.refArlogs || '',
         cliente
       });
       this.showReceiptModal = false;
@@ -530,4 +611,3 @@ export class WarehouseViewComponent {
     }
   }
 }
-

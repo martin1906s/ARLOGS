@@ -13,14 +13,9 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
   template: `
     <div class="operations-view py-2">
 
-      <!-- Top Header & Direct Create Action -->
+      <!-- Header & Actions -->
       <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-        <div>
-          <h5 class="fw-bold mb-0 text-dark font-heading">Control Operativo de Embarques (H1–H10)</h5>
-          <span class="fs-xs text-muted">
-            Seguimiento de hitos, documentos de transporte, pesos y gestión aduanera en tiempo real
-          </span>
-        </div>
+        <h5 class="fw-bold mb-0 text-dark font-heading">Control Operativo de Embarques (H1–H10)</h5>
 
         <div class="d-flex align-items-center gap-2">
           <button
@@ -38,84 +33,89 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
         </div>
       </div>
 
-      <!-- Filter Toolbar -->
-      <div class="card-executive p-3 mb-3">
-        <div class="row g-2 align-items-center">
+      <!-- Main Unified Container with Integrated Filter Toolbar & Pagination -->
+      <div class="card-executive overflow-hidden mb-3">
+        
+        <!-- Integrated Filter Bar Header -->
+        <div class="p-3 bg-slate-50 border-bottom border-slate-200">
+          <div class="row g-2 align-items-center">
 
-          <!-- Search Input -->
-          <div class="col-12 col-md-4">
-            <div class="input-group input-group-sm">
-              <span class="input-group-text bg-white text-muted border-end-0">
-                <i class="bi bi-search"></i>
-              </span>
-              <input
-                type="text"
-                class="form-control border-start-0"
-                placeholder="Buscar por Ref, QR, OC, Guía, Contenedor o Shipper..."
-                [ngModel]="searchQuery()"
-                (ngModelChange)="searchQuery.set($event)">
-              @if (searchQuery()) {
-                <button class="btn btn-outline-secondary" type="button" (click)="searchQuery.set('')">
-                  <i class="bi bi-x"></i>
-                </button>
-              }
+            <!-- Search Input -->
+            <div class="col-12 col-md-4">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white text-muted border-end-0">
+                  <i class="bi bi-search"></i>
+                </span>
+                <input
+                  type="text"
+                  class="form-control border-start-0"
+                  placeholder="Buscar Ref, QR, OC, Guía, Contenedor..."
+                  [ngModel]="searchQuery()"
+                  (ngModelChange)="searchQuery.set($event); opsPage.set(1)">
+                @if (searchQuery()) {
+                  <button class="btn btn-outline-secondary" type="button" (click)="searchQuery.set(''); opsPage.set(1)">
+                    <i class="bi bi-x"></i>
+                  </button>
+                }
+              </div>
             </div>
+
+            <!-- Modality Filter -->
+            <div class="col-6 col-md-2">
+              <select class="form-select form-select-sm" [ngModel]="selectedModality()" (ngModelChange)="selectedModality.set($event); opsPage.set(1)">
+                <option value="ALL">Modalidad: Todas</option>
+                <option value="AEREO">Aéreo (A)</option>
+                <option value="FCL">FCL Contenedor (F)</option>
+                <option value="LCL">LCL Consolidado (L)</option>
+                <option value="CUSTOMS">Customs (C)</option>
+                <option value="COURIER">Courier (AC)</option>
+                <option value="INLAND">Inland (I)</option>
+              </select>
+            </div>
+
+            <!-- Status Filter -->
+            <div class="col-6 col-md-2">
+              <select class="form-select form-select-sm" [ngModel]="selectedStatus()" (ngModelChange)="selectedStatus.set($event); opsPage.set(1)">
+                <option value="ALL">Estado: Todos</option>
+                <option value="ABIERTO">Abierto (En plazo)</option>
+                <option value="REVISAR">Revisar (Demorado)</option>
+                <option value="CERRADO">Cerrado (Completado)</option>
+                <option value="N/A">N/A (Inland)</option>
+              </select>
+            </div>
+
+            <!-- Client Filter -->
+            <div class="col-6 col-md-2">
+              <select class="form-select form-select-sm" [ngModel]="selectedClient()" (ngModelChange)="selectedClient.set($event); opsPage.set(1)">
+                <option value="ALL">Cliente: Todos</option>
+                <option value="CLI-001">Industrias Andinas</option>
+                <option value="CLI-002">Comercial Pacífico</option>
+              </select>
+            </div>
+
+            <!-- Customs Filter -->
+            <div class="col-6 col-md-2 d-flex align-items-center gap-1">
+              <select class="form-select form-select-sm flex-grow-1" [ngModel]="selectedCustoms()" (ngModelChange)="selectedCustoms.set($event); opsPage.set(1)">
+                <option value="ALL">Aduana: Todas</option>
+                <option value="SI">Aduana: SÍ</option>
+                <option value="NO">Solo Flete: NO</option>
+              </select>
+              <button type="button" class="btn btn-sm btn-outline-secondary px-2" (click)="resetFilters()" title="Restablecer filtros">
+                <i class="bi bi-arrow-counterclockwise"></i>
+              </button>
+            </div>
+
           </div>
 
-          <!-- Modality Filter -->
-          <div class="col-6 col-md-2">
-            <select class="form-select form-select-sm" [ngModel]="selectedModality()" (ngModelChange)="selectedModality.set($event)">
-              <option value="ALL">Todas modalidades</option>
-              <option value="AEREO">Aéreo (A)</option>
-              <option value="FCL">FCL Contenedor (F)</option>
-              <option value="LCL">LCL Consolidado (L)</option>
-              <option value="CUSTOMS">Customs (C)</option>
-              <option value="COURIER">Courier (AC)</option>
-              <option value="INLAND">Inland (I)</option>
-            </select>
-          </div>
-
-          <!-- Status Filter -->
-          <div class="col-6 col-md-2">
-            <select class="form-select form-select-sm" [ngModel]="selectedStatus()" (ngModelChange)="selectedStatus.set($event)">
-              <option value="ALL">Todos los estados</option>
-              <option value="ABIERTO">Abierto (En plazo)</option>
-              <option value="REVISAR">Revisar (Demorado)</option>
-              <option value="CERRADO">Cerrado (Completado)</option>
-              <option value="N/A">N/A (Inland)</option>
-            </select>
-          </div>
-
-          <!-- Client Filter -->
-          <div class="col-6 col-md-2">
-            <select class="form-select form-select-sm" [ngModel]="selectedClient()" (ngModelChange)="selectedClient.set($event)">
-              <option value="ALL">Todos los clientes</option>
-              <option value="CLI-001">Industrias Andinas</option>
-              <option value="CLI-002">Comercial Pacífico</option>
-            </select>
-          </div>
-
-          <!-- Customs Filter -->
-          <div class="col-6 col-md-2">
-            <select class="form-select form-select-sm" [ngModel]="selectedCustoms()" (ngModelChange)="selectedCustoms.set($event)">
-              <option value="ALL">Aduana: Todas</option>
-              <option value="SI">Aduana ARLOGS: SÍ</option>
-              <option value="NO">Solo Flete: NO</option>
-            </select>
-          </div>
-
-        </div>
-
-        <!-- Quick Status Tabs & Reset -->
-        <div class="d-flex align-items-center justify-content-between gap-2 mt-2 pt-2 border-top border-slate-100 fs-xs flex-wrap">
-          <div class="d-flex align-items-center gap-1 flex-wrap">
+          <!-- Quick Status Tabs -->
+          <div class="d-flex align-items-center gap-1 mt-2 pt-2 border-top border-slate-100 fs-xs flex-wrap">
             <span class="text-muted fw-semibold me-1">Filtro rápido:</span>
             <button
               type="button"
               class="btn btn-sm py-0 px-2 rounded-2 fs-xxs"
               [class.btn-dark]="selectedStatus() === 'ALL'"
               [class.btn-light]="selectedStatus() !== 'ALL'"
-              (click)="selectedStatus.set('ALL')">
+              (click)="selectedStatus.set('ALL'); opsPage.set(1)">
               Todos ({{ jobs().length }})
             </button>
             <button
@@ -123,7 +123,7 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
               class="btn btn-sm py-0 px-2 rounded-2 fs-xxs"
               [class.btn-primary]="selectedStatus() === 'ABIERTO'"
               [class.btn-light]="selectedStatus() !== 'ABIERTO'"
-              (click)="selectedStatus.set('ABIERTO')">
+              (click)="selectedStatus.set('ABIERTO'); opsPage.set(1)">
               Abiertos ({{ countByStatus('ABIERTO') }})
             </button>
             <button
@@ -131,7 +131,7 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
               class="btn btn-sm py-0 px-2 rounded-2 fs-xxs"
               [class.btn-warning]="selectedStatus() === 'REVISAR'"
               [class.btn-light]="selectedStatus() !== 'REVISAR'"
-              (click)="selectedStatus.set('REVISAR')">
+              (click)="selectedStatus.set('REVISAR'); opsPage.set(1)">
               <i class="bi bi-exclamation-triangle-fill me-1"></i>Revisar ({{ countByStatus('REVISAR') }})
             </button>
             <button
@@ -139,19 +139,13 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
               class="btn btn-sm py-0 px-2 rounded-2 fs-xxs"
               [class.btn-success]="selectedStatus() === 'CERRADO'"
               [class.btn-light]="selectedStatus() !== 'CERRADO'"
-              (click)="selectedStatus.set('CERRADO')">
+              (click)="selectedStatus.set('CERRADO'); opsPage.set(1)">
               Cerrados ({{ countByStatus('CERRADO') }})
             </button>
           </div>
-
-          <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none fs-xxs text-muted" (click)="resetFilters()">
-            <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar filtros
-          </button>
         </div>
-      </div>
 
-      <!-- Operations Data Table -->
-      <div class="card-executive overflow-hidden">
+        <!-- Operations Data Table -->
         <div class="table-responsive">
           <table class="table table-arlogs align-middle mb-0">
             <thead>
@@ -173,7 +167,7 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
               </tr>
             </thead>
             <tbody>
-              @for (job of filteredJobs(); track job.refArlogs) {
+              @for (job of paginatedJobs(); track job.refArlogs) {
                 <tr [class.row-alert]="job.estado === 'REVISAR'">
                   <td>
                     <strong class="text-primary mono-font">{{ job.refArlogs }}</strong>
@@ -200,30 +194,35 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
                     <div class="text-truncate" style="max-width: 140px;" [title]="job.shipper">
                       {{ job.shipper }}
                     </div>
-                    <div class="fs-xxs text-muted">{{ job.paisOrigen }}</div>
                   </td>
                   <td>
-                    <span class="mono-font fs-xs badge bg-slate-50 text-dark border border-slate-200">
-                      {{ job.ordenesCompra.join(', ') }}
-                    </span>
+                    <span class="mono-font badge bg-slate-50 text-dark border border-slate-200">{{ job.ordenesCompra.join(', ') }}</span>
                   </td>
-                  <td class="mono-font fs-xs text-muted">{{ job.guiaMaster }}</td>
-                  <td class="mono-font fs-xs text-muted">{{ job.contenedor }}</td>
+                  <td>
+                    <span class="mono-font fs-xs">{{ job.guiaMaster || '—' }}</span>
+                  </td>
+                  <td>
+                    <span class="mono-font fs-xs">{{ job.contenedor || '—' }}</span>
+                  </td>
                   <td class="mono-font fs-xs">{{ job.h1_asignacion }}</td>
                   <td>
-                    <span class="mono-font fw-bold" [class.text-amber-700]="job.estado === 'REVISAR'">
-                      {{ job.diasAbiertos !== 'N/A' ? job.diasAbiertos + ' d' : 'N/A' }}
+                    <span class="mono-font fw-bold" [class.text-danger]="job.estado === 'REVISAR'">
+                      {{ job.diasAbiertos }} d
                     </span>
                   </td>
                   <td>
-                    <span class="mono-font" [class.text-primary]="job.diasTransito !== 'N/A'">
+                    <span class="mono-font fw-bold" [class.text-primary]="job.diasTransito !== 'N/A'">
                       {{ job.diasTransito !== 'N/A' ? job.diasTransito + ' d' : 'N/A' }}
                     </span>
                   </td>
                   <td>
-                    <span class="mono-font fw-bold" [class.text-success]="job.diasCicloTotal !== 'N/A'">
-                      {{ job.diasCicloTotal !== 'N/A' ? job.diasCicloTotal + ' d' : 'N/A' }}
-                    </span>
+                    @if (job.diasCicloTotal !== 'N/A') {
+                      <span class="mono-font fw-bold text-success">{{ job.diasCicloTotal }} d</span>
+                    } @else if (job.diasGestionSinAduana !== 'N/A') {
+                      <span class="mono-font fw-bold text-info" title="Gestión sin aduana (H6 - H1)">{{ job.diasGestionSinAduana }} d</span>
+                    } @else {
+                      <span class="mono-font text-muted">N/A</span>
+                    }
                   </td>
                   <td>
                     <span class="status-pill" [ngClass]="getStatusPillClass(job.estado)">
@@ -231,29 +230,19 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
                     </span>
                   </td>
                   <td class="text-end">
-                    <div class="d-inline-flex gap-1">
-                      <button
-                        type="button"
-                        class="btn btn-sm btn-brand-outline py-1 px-2"
-                        (click)="openDetail(job)"
-                        title="Registrar hitos y documentos">
-                        <i class="bi bi-sliders me-1"></i>Hitos
-                      </button>
-                      <button
-                        type="button"
-                        class="btn btn-sm btn-outline-danger py-1 px-2"
-                        (click)="jobPendingDelete.set(job)"
-                        title="Eliminar embarque">
-                        <i class="bi bi-trash"></i>
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-primary py-1 px-2 fs-xs"
+                      (click)="openDetail(job)"
+                      title="Gestionar hitos H1-H10">
+                      <i class="bi bi-pencil-square me-1"></i>Hitos
+                    </button>
                   </td>
                 </tr>
               } @empty {
                 <tr>
                   <td colspan="14" class="text-center py-4 text-muted">
-                    <i class="bi bi-inbox fs-3 d-block mb-1"></i>
-                    No se encontraron embarques con los filtros activos.
+                    No se encontraron embarques con los filtros aplicados.
                   </td>
                 </tr>
               }
@@ -261,63 +250,117 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
           </table>
         </div>
 
-        <div class="p-2 px-3 bg-slate-50 border-top border-slate-200 d-flex justify-content-between align-items-center fs-xxs text-muted">
-          <span>Mostrando <strong>{{ filteredJobs().length }}</strong> de <strong>{{ jobs().length }}</strong> referencias</span>
-          <span>Cálculo de hitos en tiempo real</span>
-        </div>
+        <!-- Functional Pagination Footer -->
+        @if (filteredJobs().length > 0) {
+          <div class="p-2 px-3 bg-slate-50 border-top border-slate-200 d-flex align-items-center justify-content-between flex-wrap gap-2 fs-xs">
+            <div class="d-flex align-items-center gap-2 text-muted">
+              <span>
+                Mostrando <strong>{{ opsStartIndex() }}</strong>–<strong>{{ opsEndIndex() }}</strong> de <strong>{{ filteredJobs().length }}</strong> embarques
+              </span>
+              <span class="d-none d-sm-inline">&bull;</span>
+              <div class="d-flex align-items-center gap-1 d-none d-sm-flex">
+                <span class="text-muted fs-xxs">Filas:</span>
+                <div class="btn-group btn-group-sm pagination-size-group">
+                  <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="opsPageSize() === 5" [class.btn-outline-secondary]="opsPageSize() !== 5" (click)="opsPageSize.set(5); opsPage.set(1)">5</button>
+                  <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="opsPageSize() === 8" [class.btn-outline-secondary]="opsPageSize() !== 8" (click)="opsPageSize.set(8); opsPage.set(1)">8</button>
+                  <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="opsPageSize() === 15" [class.btn-outline-secondary]="opsPageSize() !== 15" (click)="opsPageSize.set(15); opsPage.set(1)">15</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-1">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary py-0 px-2 fs-xs"
+                [disabled]="opsPage() === 1"
+                (click)="opsPage.set(opsPage() - 1)">
+                <i class="bi bi-chevron-left"></i>
+              </button>
+              @for (p of opsPageNumbers(); track p) {
+                <button
+                  type="button"
+                  class="btn btn-sm py-0 px-2 fs-xs"
+                  [class.btn-dark]="opsPage() === p"
+                  [class.btn-outline-secondary]="opsPage() !== p"
+                  (click)="opsPage.set(p)">
+                  {{ p }}
+                </button>
+              }
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary py-0 px-2 fs-xs"
+                [disabled]="opsPage() === totalOpsPages()"
+                (click)="opsPage.set(opsPage() + 1)">
+                <i class="bi bi-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+        }
       </div>
 
-      <!-- Detail Modal (Hitos, Docs, Pesos, Aduana) -->
+      <!-- Detail Modal -->
       @if (selectedJob()) {
         <app-job-detail-modal
           [job]="selectedJob()"
-          [isReadOnly]="false"
-          (close)="selectedJob.set(null)"
-          (save)="onSaveMilestones($event)">
+          (close)="closeDetail()"
+          (save)="onJobSaved($event)">
         </app-job-detail-modal>
       }
 
-      <!-- New Direct Shipment Modal -->
+      <!-- New Shipment Modal -->
       @if (showCreateModal) {
-        <div class="modal-backdrop fade show"></div>
-        <div class="modal fade show d-block" tabindex="-1">
-          <div class="modal-dialog modal-lg">
-            <div class="modal-content border-0 shadow-lg rounded-3">
-              <div class="modal-header bg-slate-900 text-white py-3 px-4">
-                <h6 class="modal-title fw-bold font-heading mb-0">
-                  <i class="bi bi-box-seam me-2 text-info"></i>Registrar Nuevo Embarque Operativo
-                </h6>
+        <div class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(4px);">
+          <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              <div class="modal-header bg-slate-900 text-white border-0 py-3">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-plus-circle-fill text-warning"></i>
+                  <h6 class="modal-title mb-0 fw-bold font-heading">Crear Nuevo Embarque Operativo</h6>
+                </div>
                 <button type="button" class="btn-close btn-close-white" (click)="showCreateModal = false"></button>
               </div>
 
               <form (ngSubmit)="submitNewShipment()">
-                <div class="modal-body p-4 bg-slate-50">
+                <div class="modal-body p-4">
                   <div class="row g-3">
                     <div class="col-12 col-md-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Cliente *</label>
-                      <select class="form-select" [(ngModel)]="newJobForm.clienteId" name="clienteId" (ngModelChange)="onNewClientChange($event)" required>
-                        <option value="CLI-001">Industrias Andinas S.A.</option>
-                        <option value="CLI-002">Comercial Pacífico Cía. Ltda.</option>
+                      <label class="form-label fs-xs fw-semibold">Cliente</label>
+                      <select class="form-select" [(ngModel)]="newJobForm.clienteId" name="clienteId" (ngModelChange)="onNewClientChange($event)">
+                        <option value="CLI-001">Industrias Andinas S.A. (CLI-001)</option>
+                        <option value="CLI-002">Comercial Pacífico Cía. Ltda. (CLI-002)</option>
                       </select>
                     </div>
+
                     <div class="col-12 col-md-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Modalidad *</label>
-                      <select class="form-select" [(ngModel)]="newJobForm.servicio" name="servicio" (ngModelChange)="onNewServiceChange($event)" required>
+                      <label class="form-label fs-xs fw-semibold">Modalidad de Servicio</label>
+                      <select class="form-select" [(ngModel)]="newJobForm.servicio" name="servicio" (ngModelChange)="onNewServiceChange($event)">
                         <option value="AEREO">Aéreo (A)</option>
                         <option value="FCL">FCL Contenedor (F)</option>
                         <option value="LCL">LCL Consolidado (L)</option>
-                        <option value="CUSTOMS">Customs Aduana (C)</option>
+                        <option value="CUSTOMS">Customs (C)</option>
                         <option value="COURIER">Courier (AC)</option>
-                        <option value="INLAND">Inland (I)</option>
+                        <option value="INLAND">Inland Transporte (I)</option>
                       </select>
                     </div>
+
                     <div class="col-12 col-md-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Shipper / Proveedor *</label>
-                      <input type="text" class="form-control" [(ngModel)]="newJobForm.shipper" name="shipper" placeholder="Ej. Siemens Logistics GmbH" required>
+                      <label class="form-label fs-xs fw-semibold">Proveedor (Shipper)</label>
+                      <input type="text" class="form-control" [(ngModel)]="newJobForm.shipper" name="shipper" placeholder="Ej. Ningbo Pioneer Industrial" required>
                     </div>
+
                     <div class="col-12 col-md-3">
-                      <label class="form-label fs-xs fw-bold text-dark">Incoterm *</label>
-                      <select class="form-select" [(ngModel)]="newJobForm.incoterm" name="incoterm" required>
+                      <label class="form-label fs-xs fw-semibold">País Origen</label>
+                      <input type="text" class="form-control" [(ngModel)]="newJobForm.paisOrigen" name="paisOrigen" placeholder="Ej. China" required>
+                    </div>
+
+                    <div class="col-12 col-md-3">
+                      <label class="form-label fs-xs fw-semibold">Puerto / Aeropuerto</label>
+                      <input type="text" class="form-control" [(ngModel)]="newJobForm.puertoEmbarque" name="puertoEmbarque" placeholder="Ej. Ningbo (CNNGB)" required>
+                    </div>
+
+                    <div class="col-6 col-md-4">
+                      <label class="form-label fs-xs fw-semibold">Incoterm</label>
+                      <select class="form-select" [(ngModel)]="newJobForm.incoterm" name="incoterm">
                         <option value="FOB">FOB</option>
                         <option value="EXW">EXW</option>
                         <option value="FCA">FCA</option>
@@ -326,40 +369,37 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
                         <option value="DAP">DAP</option>
                       </select>
                     </div>
-                    <div class="col-12 col-md-3">
-                      <label class="form-label fs-xs fw-bold text-dark">Aduana ARLOGS *</label>
-                      <select class="form-select" [(ngModel)]="newJobForm.aduanaPorArlogs" name="aduanaPorArlogs" required>
+
+                    <div class="col-6 col-md-4">
+                      <label class="form-label fs-xs fw-semibold">Aduana por ARLOGS</label>
+                      <select class="form-select" [(ngModel)]="newJobForm.aduanaPorArlogs" name="aduanaPorArlogs" [disabled]="newJobForm.servicio === 'INLAND'">
                         <option value="SI">SÍ</option>
                         <option value="NO">NO</option>
                         <option value="N/A">N/A</option>
                       </select>
                     </div>
-                    <div class="col-6 col-md-4">
-                      <label class="form-label fs-xs fw-bold text-dark">País Origen *</label>
-                      <input type="text" class="form-control" [(ngModel)]="newJobForm.paisOrigen" name="paisOrigen" placeholder="ALEMANIA" required>
-                    </div>
-                    <div class="col-6 col-md-4">
-                      <label class="form-label fs-xs fw-bold text-dark">Puerto / Aeropuerto *</label>
-                      <input type="text" class="form-control" [(ngModel)]="newJobForm.puertoEmbarque" name="puertoEmbarque" placeholder="HAMBURGO" required>
-                    </div>
+
                     <div class="col-12 col-md-4">
-                      <label class="form-label fs-xs fw-bold text-dark">Peso Origen (kg)</label>
-                      <input type="number" class="form-control mono-font" [(ngModel)]="newJobForm.pesoOrigen" name="pesoOrigen" min="1">
+                      <label class="form-label fs-xs fw-semibold">Peso Origen (kg)</label>
+                      <input type="number" class="form-control mono-font" [(ngModel)]="newJobForm.pesoOrigen" name="pesoOrigen" min="1" step="1">
                     </div>
+
                     <div class="col-12 col-md-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Órdenes de Compra (OC) *</label>
+                      <label class="form-label fs-xs fw-semibold">Órdenes de Compra (separadas por coma)</label>
                       <input type="text" class="form-control mono-font" [(ngModel)]="newJobForm.ordenesCompraStr" name="ordenesCompraStr" placeholder="OC-6001, OC-6002" required>
                     </div>
+
                     <div class="col-12 col-md-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Guía Master / BL</label>
-                      <input type="text" class="form-control mono-font" [(ngModel)]="newJobForm.guiaMaster" name="guiaMaster" placeholder="Opcional (PENDIENTE si vacío)">
+                      <label class="form-label fs-xs fw-semibold">Guía Máster / BL</label>
+                      <input type="text" class="form-control mono-font" [(ngModel)]="newJobForm.guiaMaster" name="guiaMaster" placeholder="Ej. MSK-9841207">
                     </div>
                   </div>
                 </div>
-                <div class="modal-footer bg-white border-top border-slate-200 py-2 px-4">
-                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="showCreateModal = false">Cancelar</button>
+
+                <div class="modal-footer bg-slate-50 border-top border-slate-200 py-2 px-4">
+                  <button type="button" class="btn btn-sm btn-light border" (click)="showCreateModal = false">Cancelar</button>
                   <button type="submit" class="btn btn-sm btn-brand-primary">
-                    <i class="bi bi-check2 me-1"></i>Crear Embarque
+                    <i class="bi bi-check-lg me-1"></i>Crear Embarque
                   </button>
                 </div>
               </form>
@@ -368,73 +408,64 @@ import { JobDetailModalComponent } from '../job-detail-modal/job-detail-modal.co
         </div>
       }
 
-      <!-- Delete Shipment Confirmation -->
-      @if (jobPendingDelete()) {
-        <div class="modal-backdrop fade show"></div>
-        <div class="modal fade show d-block" tabindex="-1">
-          <div class="modal-dialog modal-sm modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-3">
-              <div class="modal-body p-4 text-center">
-                <i class="bi bi-trash3 text-danger fs-2 d-block mb-2"></i>
-                <h6 class="fw-bold text-dark">¿Eliminar embarque?</h6>
-                <p class="text-muted fs-xs mb-3">
-                  Se eliminará la referencia <strong>{{ jobPendingDelete()?.refArlogs }}</strong> ({{ jobPendingDelete()?.cliente }}).
-                </p>
-                <div class="d-flex gap-2 justify-content-center">
-                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="jobPendingDelete.set(null)">Cancelar</button>
-                  <button type="button" class="btn btn-sm btn-danger" (click)="executeDeleteShipment()">Eliminar</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      }
-
     </div>
   `,
   styles: [`
-    .border-slate-100 { border-color: #F1F5F9 !important; }
-    .border-slate-200 { border-color: #E2E8F0 !important; }
+    .row-alert {
+      background-color: #FFFBEB !important;
+    }
     .bg-slate-50 { background-color: #F8FAFC !important; }
     .bg-slate-100 { background-color: #F1F5F9 !important; }
     .bg-slate-900 { background-color: #0F172A !important; }
     .text-slate-500 { color: #64748B !important; }
     .text-slate-700 { color: #334155 !important; }
+    .border-slate-100 { border-color: #F1F5F9 !important; }
+    .border-slate-200 { border-color: #E2E8F0 !important; }
     .bg-blue-50 { background-color: #EFF6FF !important; }
     .text-blue-700 { color: #1D4ED8 !important; }
-    .text-amber-700 { color: #B45309 !important; }
   `]
 })
 export class OperationsViewComponent {
   private shipmentService = inject(ShipmentService);
   private toastService = inject(ToastService);
 
-  readonly jobs = this.shipmentService.jobs;
+  readonly jobs = this.shipmentService.authorizedJobs;
 
-  searchQuery = signal('');
-  selectedModality = signal('ALL');
-  selectedStatus = signal('ALL');
-  selectedClient = signal('ALL');
-  selectedCustoms = signal('ALL');
+  searchQuery = signal<string>('');
+  selectedModality = signal<string>('ALL');
+  selectedStatus = signal<string>('ALL');
+  selectedClient = signal<string>('ALL');
+  selectedCustoms = signal<string>('ALL');
 
   selectedJob = signal<ShipmentJob | null>(null);
-  jobPendingDelete = signal<ShipmentJob | null>(null);
   showCreateModal = false;
+
+  // Pagination
+  opsPage = signal(1);
+  opsPageSize = signal(8);
 
   newJobForm = this.emptyNewJobForm();
 
   readonly filteredJobs = computed(() => {
     let list = this.jobs();
+    const q = this.searchQuery().trim().toLowerCase();
     const mod = this.selectedModality();
-    const status = this.selectedStatus();
-    const cli = this.selectedClient();
+    const stat = this.selectedStatus();
+    const client = this.selectedClient();
     const customs = this.selectedCustoms();
-    const q = this.searchQuery().toLowerCase().trim();
 
-    if (mod !== 'ALL') list = list.filter(j => j.servicio === mod);
-    if (status !== 'ALL') list = list.filter(j => j.estado === status);
-    if (cli !== 'ALL') list = list.filter(j => j.clienteId === cli);
-    if (customs !== 'ALL') list = list.filter(j => j.aduanaPorArlogs === customs);
+    if (mod !== 'ALL') {
+      list = list.filter(j => j.servicio === mod);
+    }
+    if (stat !== 'ALL') {
+      list = list.filter(j => j.estado === stat);
+    }
+    if (client !== 'ALL') {
+      list = list.filter(j => j.clienteId === client);
+    }
+    if (customs !== 'ALL') {
+      list = list.filter(j => j.aduanaPorArlogs === customs);
+    }
 
     if (q) {
       list = list.filter(j =>
@@ -449,6 +480,29 @@ export class OperationsViewComponent {
       );
     }
     return list;
+  });
+
+  readonly totalOpsPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredJobs().length / this.opsPageSize()))
+  );
+
+  readonly paginatedJobs = computed(() => {
+    const page = Math.min(this.opsPage(), this.totalOpsPages());
+    const start = (page - 1) * this.opsPageSize();
+    return this.filteredJobs().slice(start, start + this.opsPageSize());
+  });
+
+  readonly opsStartIndex = computed(() =>
+    this.filteredJobs().length === 0 ? 0 : (this.opsPage() - 1) * this.opsPageSize() + 1
+  );
+
+  readonly opsEndIndex = computed(() =>
+    Math.min(this.opsPage() * this.opsPageSize(), this.filteredJobs().length)
+  );
+
+  readonly opsPageNumbers = computed(() => {
+    const total = this.totalOpsPages();
+    return Array.from({ length: total }, (_, i) => i + 1);
   });
 
   private emptyNewJobForm() {
@@ -487,6 +541,7 @@ export class OperationsViewComponent {
     this.selectedStatus.set('ALL');
     this.selectedClient.set('ALL');
     this.selectedCustoms.set('ALL');
+    this.opsPage.set(1);
     this.toastService.info('Filtros restablecidos', 'Mostrando todos los embarques.');
   }
 
@@ -554,35 +609,22 @@ export class OperationsViewComponent {
     this.selectedJob.set(job);
   }
 
-  onSaveMilestones(event: { refArlogs: string; changes: Partial<ShipmentJob> }): void {
-    try {
-      const updated = this.shipmentService.updateJobMilestones(event.refArlogs, event.changes);
-      this.selectedJob.set(null);
-      this.toastService.success(
-        'Actualizado — Cliente notificado',
-        `Embarque ${updated.refArlogs} (${updated.estado}) recalculado y reflejado en Portal Clientes.`
-      );
-    } catch (err: any) {
-      this.toastService.error('Incorrecto', err?.message ?? 'No se pudo actualizar el embarque.');
-    }
+  closeDetail(): void {
+    this.selectedJob.set(null);
   }
 
-  executeDeleteShipment(): void {
-    const job = this.jobPendingDelete();
-    if (!job) return;
-    try {
-      this.shipmentService.deleteShipment(job.refArlogs);
-      this.jobPendingDelete.set(null);
-      this.toastService.success('Eliminado', `Embarque ${job.refArlogs} eliminado del seguimiento.`);
-    } catch (err: any) {
-      this.jobPendingDelete.set(null);
-      this.toastService.error('Incorrecto', err?.message ?? 'No se pudo eliminar el embarque.');
-    }
+  onJobSaved(event: { refArlogs: string; changes: Partial<ShipmentJob> }): void {
+    const updated = this.shipmentService.updateJobMilestones(event.refArlogs, event.changes);
+    this.toastService.success(
+      'Correcto — Actualizado',
+      `Embarque ${updated.refArlogs} guardado correctamente.`
+    );
+    this.selectedJob.set(null);
   }
 
   exportExcel(): void {
     const list = this.filteredJobs();
     this.shipmentService.exportToExcel(list);
-    this.toastService.success('Correcto — Exportado', `Se descargó el Excel con ${list.length} embarques.`);
+    this.toastService.success('Correcto — Exportado', `Se descargó el reporte con ${list.length} embarques.`);
   }
 }

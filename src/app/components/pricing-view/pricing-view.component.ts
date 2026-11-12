@@ -12,14 +12,9 @@ import { Quotation, ServiceType, ServicePrefix } from '../../models/shipment.mod
   template: `
     <div class="pricing-view py-2">
 
-      <!-- Top Header & Action -->
+      <!-- Header & Action -->
       <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-        <div>
-          <h5 class="fw-bold mb-0 text-dark font-heading">Gestión de Cotizaciones y Aprobaciones</h5>
-          <span class="fs-xs text-muted">
-            Emisión de cotizaciones QR, ajustes comerciales y activación automática en Operaciones
-          </span>
-        </div>
+        <h5 class="fw-bold mb-0 text-dark font-heading">Gestión de Cotizaciones y Aprobaciones</h5>
 
         <button
           type="button"
@@ -30,70 +25,61 @@ import { Quotation, ServiceType, ServicePrefix } from '../../models/shipment.mod
         </button>
       </div>
 
-      <!-- Search & Filter Toolbar -->
-      <div class="card-executive p-3 mb-3">
-        <div class="row g-2 align-items-center">
-          <div class="col-12 col-md-5">
-            <div class="input-group input-group-sm">
-              <span class="input-group-text bg-white text-muted border-end-0">
-                <i class="bi bi-search"></i>
-              </span>
-              <input
-                type="text"
-                class="form-control border-start-0"
-                placeholder="Buscar por QR, cliente, shipper, origen o OC..."
-                [ngModel]="searchQuery()"
-                (ngModelChange)="searchQuery.set($event)">
-              @if (searchQuery()) {
-                <button class="btn btn-outline-secondary" type="button" (click)="searchQuery.set('')">
-                  <i class="bi bi-x"></i>
-                </button>
-              }
+      <!-- Main Unified Table Card with Integrated Search & Filter Toolbar -->
+      <div class="card-executive overflow-hidden mb-3">
+        
+        <!-- Integrated Toolbar Header -->
+        <div class="p-3 bg-slate-50 border-bottom border-slate-200">
+          <div class="row g-2 align-items-center">
+            <div class="col-12 col-md-5">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white text-muted border-end-0">
+                  <i class="bi bi-search"></i>
+                </span>
+                <input
+                  type="text"
+                  class="form-control border-start-0"
+                  placeholder="Buscar por QR, cliente, shipper o OC..."
+                  [ngModel]="searchQuery()"
+                  (ngModelChange)="searchQuery.set($event); pricingPage.set(1)">
+                @if (searchQuery()) {
+                  <button class="btn btn-outline-secondary" type="button" (click)="searchQuery.set(''); pricingPage.set(1)">
+                    <i class="bi bi-x"></i>
+                  </button>
+                }
+              </div>
+            </div>
+
+            <div class="col-6 col-md-3">
+              <select class="form-select form-select-sm" [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event); pricingPage.set(1)">
+                <option value="ALL">Todos los estados</option>
+                <option value="PENDIENTE">Pendientes de aprobación</option>
+                <option value="APROBADA">Aprobadas</option>
+              </select>
+            </div>
+
+            <div class="col-6 col-md-2">
+              <select class="form-select form-select-sm" [ngModel]="filterModality()" (ngModelChange)="filterModality.set($event); pricingPage.set(1)">
+                <option value="ALL">Todas las modalidades</option>
+                <option value="AEREO">Aéreo (A)</option>
+                <option value="FCL">FCL (F)</option>
+                <option value="LCL">LCL (L)</option>
+                <option value="CUSTOMS">Customs (C)</option>
+                <option value="COURIER">Courier (AC)</option>
+                <option value="INLAND">Inland (I)</option>
+              </select>
+            </div>
+
+            <div class="col-12 col-md-2 text-md-end d-flex align-items-center justify-content-between justify-content-md-end gap-2">
+              <span class="fs-xxs text-muted mono-font">Pendientes: <strong class="text-warning">{{ pendingCount() }}</strong></span>
+              <button type="button" class="btn btn-sm btn-outline-secondary px-2" (click)="resetFilters()" title="Limpiar filtros">
+                <i class="bi bi-arrow-counterclockwise"></i>
+              </button>
             </div>
           </div>
-
-          <div class="col-6 col-md-3">
-            <select class="form-select form-select-sm" [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)">
-              <option value="ALL">Todos los estados</option>
-              <option value="PENDIENTE">Pendientes de aprobación</option>
-              <option value="APROBADA">Aprobadas</option>
-            </select>
-          </div>
-
-          <div class="col-6 col-md-2">
-            <select class="form-select form-select-sm" [ngModel]="filterModality()" (ngModelChange)="filterModality.set($event)">
-              <option value="ALL">Todas las modalidades</option>
-              <option value="AEREO">Aéreo (A)</option>
-              <option value="FCL">FCL (F)</option>
-              <option value="LCL">LCL (L)</option>
-              <option value="CUSTOMS">Customs (C)</option>
-              <option value="COURIER">Courier (AC)</option>
-              <option value="INLAND">Inland (I)</option>
-            </select>
-          </div>
-
-          <div class="col-12 col-md-2 text-md-end">
-            <button type="button" class="btn btn-sm btn-outline-secondary w-100" (click)="resetFilters()">
-              <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quotations Table -->
-      <div class="card-executive overflow-hidden">
-        <div class="p-3 bg-slate-50 border-bottom border-slate-200 d-flex align-items-center justify-content-between flex-wrap gap-2">
-          <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-receipt text-primary"></i>
-            <strong class="text-dark fs-xs">
-              Mostrando {{ filteredQuotations().length }} de {{ quotations().length }} cotizaciones
-            </strong>
-          </div>
-          <span class="badge bg-slate-200 text-slate-700 mono-font fs-xxs">
-            Pendientes: {{ pendingCount() }}
-          </span>
         </div>
 
+        <!-- Quotations Table -->
         <div class="table-responsive">
           <table class="table table-arlogs align-middle mb-0">
             <thead>
@@ -102,10 +88,10 @@ import { Quotation, ServiceType, ServicePrefix } from '../../models/shipment.mod
                 <th>Cliente</th>
                 <th>Modalidad</th>
                 <th>Shipper</th>
-                <th>Origen / Puerto</th>
+                <th>Origen</th>
                 <th>Incoterm</th>
                 <th>Órdenes de Compra</th>
-                <th>Aduana ARLOGS</th>
+                <th>Aduana</th>
                 <th class="text-end">Cotizado / Profit</th>
                 <th>Estado</th>
                 <th>Referencia</th>
@@ -113,9 +99,8 @@ import { Quotation, ServiceType, ServicePrefix } from '../../models/shipment.mod
               </tr>
             </thead>
             <tbody>
-              @for (q of filteredQuotations(); track q.id) {
+              @for (q of paginatedQuotations(); track q.id) {
                 @let profitEst = (q.valorVentaCotizado ?? 0) - (q.costoEstimadoCotizado ?? 0);
-                @let riskFlow = (q.valorVentaCotizado ?? 0) >= 5000 && (q.plazoPagoDias ?? 15) >= 30;
                 <tr>
                   <td>
                     <span class="badge bg-slate-900 text-info mono-font fs-xs">{{ q.id }}</span>
@@ -126,8 +111,14 @@ import { Quotation, ServiceType, ServicePrefix } from '../../models/shipment.mod
                   <td>
                     <span class="badge bg-slate-100 text-slate-700 border border-slate-200 mono-font">{{ q.servicio }}</span>
                   </td>
-                  <td>{{ q.shipper }}</td>
-                  <td>{{ q.puertoEmbarque }}, {{ q.paisOrigen }}</td>
+                  <td>
+                    <div class="text-truncate" style="max-width: 140px;" [title]="q.shipper">{{ q.shipper }}</div>
+                  </td>
+                  <td>
+                    <div class="text-truncate" style="max-width: 130px;" [title]="q.puertoEmbarque + ', ' + q.paisOrigen">
+                      {{ q.puertoEmbarque }}, {{ q.paisOrigen }}
+                    </div>
+                  </td>
                   <td><span class="badge bg-slate-50 text-dark border border-slate-200 mono-font">{{ q.incoterm }}</span></td>
                   <td>
                     <span class="mono-font fs-xs">{{ q.ordenesCompra.join(', ') }}</span>
@@ -141,222 +132,224 @@ import { Quotation, ServiceType, ServicePrefix } from '../../models/shipment.mod
                       {{ q.aduanaPorArlogs }}
                     </span>
                   </td>
-                  <td class="text-end mono-font text-nowrap">
-                    <div class="fw-bold text-dark fs-xs">\${{ (q.valorVentaCotizado ?? 0) | number:'1.0-0' }}</div>
-                    <div class="fs-xxs" [class.text-success]="profitEst > 0" [class.text-muted]="profitEst <= 0">
-                      Profit: \${{ profitEst | number:'1.0-0' }} &bull; {{ q.plazoPagoDias ?? 15 }}d
+                  <td class="text-end">
+                    <div class="mono-font fw-bold text-dark fs-xs">
+                      \${{ (q.valorVentaCotizado ?? 0) | number:'1.0-0' }}
                     </div>
-                    @if (riskFlow) {
-                      <span class="badge bg-warning text-dark fs-xxs mt-1" title="Flete alto a crédito 30+ días afecta flujo de caja">
-                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Alerta Flujo
-                      </span>
-                    }
+                    <div class="fs-xxs mono-font" [class.text-success]="profitEst >= 0" [class.text-danger]="profitEst < 0">
+                      Profit: \${{ profitEst | number:'1.0-0' }}
+                    </div>
                   </td>
                   <td>
-                    @if (q.estado === 'APROBADA') {
-                      <span class="status-pill status-cerrado">
-                        <span class="dot"></span>APROBADA
-                      </span>
-                    } @else {
-                      <span class="status-pill status-revisar">
-                        <span class="dot"></span>PENDIENTE
-                      </span>
-                    }
+                    <span class="badge-subtle" [class.badge-subtle-emerald]="q.estado === 'APROBADA'" [class.badge-subtle-amber]="q.estado === 'PENDIENTE'">
+                      {{ q.estado }}
+                    </span>
                   </td>
                   <td>
                     @if (q.refArlogsGenerada) {
-                      <strong class="text-primary mono-font fs-xs">
-                        <i class="bi bi-check2 me-1 text-success"></i>{{ q.refArlogsGenerada }}
-                      </strong>
+                      <strong class="text-primary mono-font fs-xs">{{ q.refArlogsGenerada }}</strong>
                     } @else {
-                      <span class="text-muted fs-xs">En espera</span>
+                      <span class="text-muted fs-xxs">Pendiente</span>
                     }
                   </td>
                   <td class="text-end">
-                    @if (q.estado === 'PENDIENTE') {
-                      <div class="d-inline-flex gap-1">
+                    <div class="d-inline-flex gap-1">
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-secondary py-1 px-2 fs-xs"
+                        (click)="openEditModal(q)"
+                        title="Modificar cotización">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+
+                      @if (q.estado === 'PENDIENTE') {
                         <button
                           type="button"
-                          class="btn btn-sm btn-outline-secondary py-1 px-2 fs-xs"
-                          title="Editar cotización"
-                          (click)="openEditModal(q)">
-                          <i class="bi bi-pencil"></i>
-                        </button>
-                        <button
-                          type="button"
-                          class="btn btn-sm btn-success py-1 px-2 fs-xs fw-semibold"
-                          (click)="approveQuote(q.id)">
+                          class="btn btn-sm btn-success py-1 px-2 fs-xs"
+                          (click)="approveQuotation(q)"
+                          title="Aprobar y generar código ARLOGS">
                           <i class="bi bi-check-lg me-1"></i>Aprobar
                         </button>
-                        <button
-                          type="button"
-                          class="btn btn-sm btn-outline-danger py-1 px-2 fs-xs"
-                          title="Eliminar cotización"
-                          (click)="quotePendingDelete.set(q)">
-                          <i class="bi bi-trash"></i>
-                        </button>
-                      </div>
-                    } @else {
-                      <span class="badge bg-slate-100 text-muted border border-slate-200 fs-xxs">En Operaciones</span>
-                    }
+                      }
+                    </div>
                   </td>
                 </tr>
               } @empty {
                 <tr>
                   <td colspan="12" class="text-center py-4 text-muted">
-                    <i class="bi bi-search fs-3 d-block mb-1"></i>
-                    No se encontraron cotizaciones con los filtros aplicados.
+                    No se encontraron cotizaciones con los criterios seleccionados.
                   </td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
+
+        <!-- Functional Pagination Footer -->
+        @if (filteredQuotations().length > 0) {
+          <div class="p-2 px-3 bg-slate-50 border-top border-slate-200 d-flex align-items-center justify-content-between flex-wrap gap-2 fs-xs">
+            <div class="d-flex align-items-center gap-2 text-muted">
+              <span>
+                Mostrando <strong>{{ pricingStartIndex() }}</strong>–<strong>{{ pricingEndIndex() }}</strong> de <strong>{{ filteredQuotations().length }}</strong> cotizaciones
+              </span>
+              <span class="d-none d-sm-inline">&bull;</span>
+              <div class="d-flex align-items-center gap-1 d-none d-sm-flex">
+                <span class="text-muted fs-xxs">Filas:</span>
+                <div class="btn-group btn-group-sm pagination-size-group">
+                  <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="pricingPageSize() === 5" [class.btn-outline-secondary]="pricingPageSize() !== 5" (click)="pricingPageSize.set(5); pricingPage.set(1)">5</button>
+                  <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="pricingPageSize() === 6" [class.btn-outline-secondary]="pricingPageSize() !== 6" (click)="pricingPageSize.set(6); pricingPage.set(1)">6</button>
+                  <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="pricingPageSize() === 12" [class.btn-outline-secondary]="pricingPageSize() !== 12" (click)="pricingPageSize.set(12); pricingPage.set(1)">12</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-1">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary py-0 px-2 fs-xs"
+                [disabled]="pricingPage() === 1"
+                (click)="pricingPage.set(pricingPage() - 1)">
+                <i class="bi bi-chevron-left"></i>
+              </button>
+              @for (p of pricingPageNumbers(); track p) {
+                <button
+                  type="button"
+                  class="btn btn-sm py-0 px-2 fs-xs"
+                  [class.btn-dark]="pricingPage() === p"
+                  [class.btn-outline-secondary]="pricingPage() !== p"
+                  (click)="pricingPage.set(p)">
+                  {{ p }}
+                </button>
+              }
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary py-0 px-2 fs-xs"
+                [disabled]="pricingPage() === totalPricingPages()"
+                (click)="pricingPage.set(pricingPage() + 1)">
+                <i class="bi bi-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+        }
       </div>
 
-      <!-- Create / Edit Quote Modal -->
+      <!-- Create / Edit Quotation Modal -->
       @if (showQuoteModal) {
-        <div class="modal-backdrop fade show"></div>
-        <div class="modal fade show d-block" tabindex="-1">
-          <div class="modal-dialog modal-lg">
-            <div class="modal-content border-0 shadow-lg rounded-3">
-
-              <div class="modal-header bg-slate-900 text-white py-3 px-4">
-                <h6 class="modal-title fw-bold font-heading mb-0">
-                  <i class="bi me-2 text-info" [class.bi-file-earmark-plus]="!editingQuoteId" [class.bi-pencil-square]="editingQuoteId"></i>
-                  {{ editingQuoteId ? 'Editar Cotización ' + editingQuoteId : 'Crear Nueva Cotización Comercial' }}
-                </h6>
+        <div class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(4px);">
+          <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              <div class="modal-header bg-slate-900 text-white border-0 py-3">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-tag-fill text-warning"></i>
+                  <h6 class="modal-title mb-0 fw-bold font-heading">
+                    {{ editingQuoteId ? 'Editar Cotización ' + editingQuoteId : 'Nueva Cotización (QR)' }}
+                  </h6>
+                </div>
                 <button type="button" class="btn-close btn-close-white" (click)="showQuoteModal = false"></button>
               </div>
 
               <form (ngSubmit)="onSubmitQuote()">
-                <div class="modal-body p-4 bg-slate-50">
+                <div class="modal-body p-4">
                   <div class="row g-3">
-
                     <div class="col-12 col-md-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Cliente *</label>
-                      <select class="form-select" [(ngModel)]="quoteForm.clienteId" name="clienteId" (ngModelChange)="onClientSelect($event)" required>
-                        <option value="CLI-001">Industrias Andinas S.A.</option>
-                        <option value="CLI-002">Comercial Pacífico Cía. Ltda.</option>
+                      <label class="form-label fs-xs fw-semibold">Cliente</label>
+                      <select class="form-select" [(ngModel)]="quoteForm.clienteId" name="clienteId" (ngModelChange)="onClientSelect($event)">
+                        <option value="CLI-001">Industrias Andinas S.A. (CLI-001)</option>
+                        <option value="CLI-002">Comercial Pacífico Cía. Ltda. (CLI-002)</option>
                       </select>
                     </div>
 
                     <div class="col-12 col-md-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Modalidad de Servicio *</label>
-                      <select class="form-select" [(ngModel)]="quoteForm.servicio" name="servicio" (ngModelChange)="onServiceSelect($event)" required>
+                      <label class="form-label fs-xs fw-semibold">Modalidad de Servicio</label>
+                      <select class="form-select" [(ngModel)]="quoteForm.servicio" name="servicio" (ngModelChange)="onServiceSelect($event)">
                         <option value="AEREO">Aéreo (A)</option>
-                        <option value="FCL">FCL Contenedor Completo (F)</option>
-                        <option value="LCL">LCL Carga Consolidada (L)</option>
-                        <option value="CUSTOMS">Customs / Trámite Aduanero (C)</option>
-                        <option value="COURIER">Courier Acelerado (AC)</option>
-                        <option value="INLAND">Inland Transporte Terrestre (I)</option>
+                        <option value="FCL">FCL Contenedor (F)</option>
+                        <option value="LCL">LCL Consolidado (L)</option>
+                        <option value="CUSTOMS">Customs (C)</option>
+                        <option value="COURIER">Courier (AC)</option>
+                        <option value="INLAND">Inland Transporte (I)</option>
                       </select>
                     </div>
 
                     <div class="col-12 col-md-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Shipper (Proveedor) *</label>
-                      <input type="text" class="form-control" [(ngModel)]="quoteForm.shipper" name="shipper" placeholder="Ej. Schneider Electric SE" required>
+                      <label class="form-label fs-xs fw-semibold">Proveedor (Shipper)</label>
+                      <input type="text" class="form-control" [(ngModel)]="quoteForm.shipper" name="shipper" placeholder="Ej. Yiwu Supply Chain Co." required>
                     </div>
 
-                    <div class="col-12 col-md-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Incoterm *</label>
-                      <select class="form-select" [(ngModel)]="quoteForm.incoterm" name="incoterm" required>
-                        <option value="FOB">FOB (Free On Board)</option>
-                        <option value="EXW">EXW (Ex Works)</option>
-                        <option value="FCA">FCA (Free Carrier)</option>
-                        <option value="CIF">CIF (Cost, Insurance &amp; Freight)</option>
-                        <option value="CFR">CFR (Cost &amp; Freight)</option>
-                        <option value="DAP">DAP (Delivered At Place)</option>
+                    <div class="col-12 col-md-3">
+                      <label class="form-label fs-xs fw-semibold">País de Origen</label>
+                      <input type="text" class="form-control" [(ngModel)]="quoteForm.paisOrigen" name="paisOrigen" placeholder="Ej. China" required>
+                    </div>
+
+                    <div class="col-12 col-md-3">
+                      <label class="form-label fs-xs fw-semibold">Puerto / Aeropuerto Embarque</label>
+                      <input type="text" class="form-control" [(ngModel)]="quoteForm.puertoEmbarque" name="puertoEmbarque" placeholder="Ej. Ningbo (CNNGB)" required>
+                    </div>
+
+                    <div class="col-6 col-md-3">
+                      <label class="form-label fs-xs fw-semibold">Incoterm</label>
+                      <select class="form-select" [(ngModel)]="quoteForm.incoterm" name="incoterm">
+                        <option value="FOB">FOB</option>
+                        <option value="EXW">EXW</option>
+                        <option value="FCA">FCA</option>
+                        <option value="CIF">CIF</option>
+                        <option value="CFR">CFR</option>
+                        <option value="DAP">DAP</option>
                       </select>
                     </div>
 
-                    <div class="col-6">
-                      <label class="form-label fs-xs fw-bold text-dark">País de Origen *</label>
-                      <input type="text" class="form-control" [(ngModel)]="quoteForm.paisOrigen" name="paisOrigen" placeholder="Ej. FRANCIA" required>
+                    <div class="col-6 col-md-3">
+                      <label class="form-label fs-xs fw-semibold">Aduana por ARLOGS</label>
+                      <select class="form-select" [(ngModel)]="quoteForm.aduanaPorArlogs" name="aduanaPorArlogs" [disabled]="quoteForm.servicio === 'INLAND'">
+                        <option value="SI">SÍ</option>
+                        <option value="NO">NO</option>
+                        <option value="N/A">N/A</option>
+                      </select>
                     </div>
 
-                    <div class="col-6">
-                      <label class="form-label fs-xs fw-bold text-dark">Puerto o Ciudad de Embarque *</label>
-                      <input type="text" class="form-control" [(ngModel)]="quoteForm.puertoEmbarque" name="puertoEmbarque" placeholder="Ej. LE HAVRE" required>
+                    <div class="col-12 col-md-6">
+                      <label class="form-label fs-xs fw-semibold">Órdenes de Compra (separadas por coma)</label>
+                      <input type="text" class="form-control mono-font" [(ngModel)]="quoteForm.ordenesCompraStr" name="ordenesCompraStr" placeholder="OC-1001, OC-1002" required>
                     </div>
 
-                    <div class="col-12 col-md-8">
-                      <label class="form-label fs-xs fw-bold text-dark">Órdenes de Compra (OC) *</label>
-                      <input type="text" class="form-control mono-font" [(ngModel)]="quoteForm.ordenesCompraStr" name="ordenesCompraStr" placeholder="Ej. OC-5001, OC-5002" required>
-                      <span class="fs-xxs text-muted">Separadas por coma si son varias órdenes</span>
+                    <!-- Commercial Pricing Breakdown -->
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fs-xs fw-semibold text-primary">Valor Venta Cotizado (USD)</label>
+                      <div class="input-group input-group-sm">
+                        <span class="input-group-text">$</span>
+                        <input type="number" class="form-control mono-font fw-bold" [(ngModel)]="quoteForm.valorVentaCotizado" name="valorVentaCotizado" min="0" step="50" required>
+                      </div>
                     </div>
 
                     <div class="col-12 col-md-4">
-                      <label class="form-label fs-xs fw-bold text-dark">Despacho Aduanero ARLOGS *</label>
-                      <select class="form-select" [(ngModel)]="quoteForm.aduanaPorArlogs" name="aduanaPorArlogs" required>
-                        <option value="SI">SÍ (Aduana coordinada)</option>
-                        <option value="NO">NO (Solo flete)</option>
-                        <option value="N/A">N/A (Inland)</option>
-                      </select>
-                    </div>
-
-                    <div class="col-4">
-                      <label class="form-label fs-xs fw-bold text-dark">Tarifa Venta (USD) *</label>
-                      <input type="number" min="0" step="10" class="form-control mono-font" [(ngModel)]="quoteForm.valorVentaCotizado" name="valorVentaCotizado" required>
-                    </div>
-
-                    <div class="col-4">
-                      <label class="form-label fs-xs fw-bold text-dark">Costo Estimado (USD) *</label>
-                      <input type="number" min="0" step="10" class="form-control mono-font" [(ngModel)]="quoteForm.costoEstimadoCotizado" name="costoEstimadoCotizado" required>
-                    </div>
-
-                    <div class="col-4">
-                      <label class="form-label fs-xs fw-bold text-dark">Plazo Crédito (días)</label>
-                      <select class="form-select mono-font" [(ngModel)]="quoteForm.plazoPagoDias" name="plazoPagoDias">
-                        <option [ngValue]="0">Contado (0d)</option>
-                        <option [ngValue]="15">15 días</option>
-                        <option [ngValue]="30">30 días</option>
-                        <option [ngValue]="45">45 días</option>
-                      </select>
-                    </div>
-
-                    @if (quoteForm.valorVentaCotizado >= 5000 && quoteForm.plazoPagoDias >= 30) {
-                      <div class="col-12">
-                        <div class="alert alert-warning py-2 px-3 fs-xs mb-0">
-                          <i class="bi bi-exclamation-triangle-fill me-1"></i>
-                          <strong>Alerta de flujo de caja:</strong> Flete elevado (\${{ quoteForm.valorVentaCotizado }}) con crédito a {{ quoteForm.plazoPagoDias }} días puede comprometer liquidez operativa; revise tarifa antes de aprobar.
-                        </div>
+                      <label class="form-label fs-xs fw-semibold text-secondary">Costo Estimado Cotizado (USD)</label>
+                      <div class="input-group input-group-sm">
+                        <span class="input-group-text">$</span>
+                        <input type="number" class="form-control mono-font" [(ngModel)]="quoteForm.costoEstimadoCotizado" name="costoEstimadoCotizado" min="0" step="50" required>
                       </div>
-                    }
+                    </div>
 
+                    <div class="col-12 col-md-4">
+                      <label class="form-label fs-xs fw-semibold">Plazo de Pago (Días)</label>
+                      <select class="form-select form-select-sm" [(ngModel)]="quoteForm.plazoPagoDias" name="plazoPagoDias">
+                        <option [value]="0">Contado (0 días)</option>
+                        <option [value]="15">15 días</option>
+                        <option [value]="30">30 días crédito</option>
+                        <option [value]="45">45 días crédito</option>
+                        <option [value]="60">60 días crédito</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
-                <div class="modal-footer bg-white border-top border-slate-200 py-2 px-4">
-                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="showQuoteModal = false">Cancelar</button>
+                <div class="modal-footer bg-slate-50 border-top border-slate-200 py-2 px-4">
+                  <button type="button" class="btn btn-sm btn-light border" (click)="showQuoteModal = false">Cancelar</button>
                   <button type="submit" class="btn btn-sm btn-brand-primary">
-                    <i class="bi bi-check2 me-1"></i>{{ editingQuoteId ? 'Guardar Cambios' : 'Generar Código QR' }}
+                    <i class="bi bi-check-lg me-1"></i>
+                    <span>{{ editingQuoteId ? 'Guardar Cambios' : 'Emitir Cotización' }}</span>
                   </button>
                 </div>
               </form>
-
-            </div>
-          </div>
-        </div>
-      }
-
-      <!-- Delete Confirmation Modal -->
-      @if (quotePendingDelete()) {
-        <div class="modal-backdrop fade show"></div>
-        <div class="modal fade show d-block" tabindex="-1">
-          <div class="modal-dialog modal-sm modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-3">
-              <div class="modal-body p-4 text-center">
-                <i class="bi bi-trash3 text-danger fs-2 d-block mb-2"></i>
-                <h6 class="fw-bold text-dark">¿Eliminar cotización?</h6>
-                <p class="text-muted fs-xs mb-3">
-                  Se eliminará <strong>{{ quotePendingDelete()?.id }}</strong> ({{ quotePendingDelete()?.cliente }}).
-                </p>
-                <div class="d-flex gap-2 justify-content-center">
-                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="quotePendingDelete.set(null)">Cancelar</button>
-                  <button type="button" class="btn btn-sm btn-danger" (click)="executeDeleteQuote()">Eliminar</button>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -365,13 +358,13 @@ import { Quotation, ServiceType, ServicePrefix } from '../../models/shipment.mod
     </div>
   `,
   styles: [`
-    .border-slate-200 { border-color: #E2E8F0 !important; }
     .bg-slate-50 { background-color: #F8FAFC !important; }
     .bg-slate-100 { background-color: #F1F5F9 !important; }
-    .bg-slate-200 { background-color: #E2E8F0 !important; }
     .bg-slate-900 { background-color: #0F172A !important; }
     .text-slate-500 { color: #64748B !important; }
     .text-slate-700 { color: #334155 !important; }
+    .border-slate-100 { border-color: #F1F5F9 !important; }
+    .border-slate-200 { border-color: #E2E8F0 !important; }
     .bg-blue-50 { background-color: #EFF6FF !important; }
     .text-blue-700 { color: #1D4ED8 !important; }
   `]
@@ -382,13 +375,16 @@ export class PricingViewComponent {
 
   readonly quotations = this.shipmentService.quotations;
 
-  searchQuery = signal('');
-  filterStatus = signal<'ALL' | 'PENDIENTE' | 'APROBADA'>('ALL');
-  filterModality = signal<ServiceType | 'ALL'>('ALL');
+  searchQuery = signal<string>('');
+  filterStatus = signal<string>('ALL');
+  filterModality = signal<string>('ALL');
 
   showQuoteModal = false;
   editingQuoteId: string | null = null;
-  quotePendingDelete = signal<Quotation | null>(null);
+
+  // Pagination
+  pricingPage = signal(1);
+  pricingPageSize = signal(6);
 
   quoteForm = this.emptyForm();
 
@@ -397,24 +393,51 @@ export class PricingViewComponent {
   );
 
   readonly filteredQuotations = computed(() => {
+    let list = this.quotations();
     const q = this.searchQuery().trim().toLowerCase();
     const status = this.filterStatus();
-    const mod = this.filterModality();
+    const modality = this.filterModality();
 
-    return this.quotations().filter(item => {
-      if (status !== 'ALL' && item.estado !== status) return false;
-      if (mod !== 'ALL' && item.servicio !== mod) return false;
-      if (!q) return true;
-      return (
+    if (status !== 'ALL') {
+      list = list.filter(item => item.estado === status);
+    }
+    if (modality !== 'ALL') {
+      list = list.filter(item => item.servicio === modality);
+    }
+    if (q) {
+      list = list.filter(item =>
         item.id.toLowerCase().includes(q) ||
         item.cliente.toLowerCase().includes(q) ||
         item.shipper.toLowerCase().includes(q) ||
         item.paisOrigen.toLowerCase().includes(q) ||
         item.puertoEmbarque.toLowerCase().includes(q) ||
-        item.ordenesCompra.some(oc => oc.toLowerCase().includes(q)) ||
-        (item.refArlogsGenerada?.toLowerCase().includes(q) ?? false)
+        item.ordenesCompra.some(oc => oc.toLowerCase().includes(q))
       );
-    });
+    }
+    return list;
+  });
+
+  readonly totalPricingPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredQuotations().length / this.pricingPageSize()))
+  );
+
+  readonly paginatedQuotations = computed(() => {
+    const page = Math.min(this.pricingPage(), this.totalPricingPages());
+    const start = (page - 1) * this.pricingPageSize();
+    return this.filteredQuotations().slice(start, start + this.pricingPageSize());
+  });
+
+  readonly pricingStartIndex = computed(() =>
+    this.filteredQuotations().length === 0 ? 0 : (this.pricingPage() - 1) * this.pricingPageSize() + 1
+  );
+
+  readonly pricingEndIndex = computed(() =>
+    Math.min(this.pricingPage() * this.pricingPageSize(), this.filteredQuotations().length)
+  );
+
+  readonly pricingPageNumbers = computed(() => {
+    const total = this.totalPricingPages();
+    return Array.from({ length: total }, (_, i) => i + 1);
   });
 
   private emptyForm() {
@@ -426,11 +449,11 @@ export class PricingViewComponent {
       shipper: '',
       paisOrigen: '',
       puertoEmbarque: '',
-      incoterm: 'FCA',
-      ordenesCompraStr: 'OC-5001',
+      incoterm: 'FOB',
+      ordenesCompraStr: 'OC-1005',
       aduanaPorArlogs: 'SI' as 'SI' | 'NO' | 'N/A',
-      valorVentaCotizado: 2200,
-      costoEstimadoCotizado: 1750,
+      valorVentaCotizado: 2400,
+      costoEstimadoCotizado: 1850,
       plazoPagoDias: 15
     };
   }
@@ -439,6 +462,7 @@ export class PricingViewComponent {
     this.searchQuery.set('');
     this.filterStatus.set('ALL');
     this.filterModality.set('ALL');
+    this.pricingPage.set(1);
     this.toastService.info('Filtros restablecidos', 'Mostrando todas las cotizaciones.');
   }
 
@@ -517,11 +541,12 @@ export class PricingViewComponent {
           plazoPagoDias: Number(this.quoteForm.plazoPagoDias) || 0
         });
         this.showQuoteModal = false;
-        this.toastService.success('Actualizado', `Cotización ${updated.id} modificada correctamente.`);
+        this.toastService.success('Correcto — Actualizado', `Cotización ${updated.id} modificada.`);
       } else {
         const created = this.shipmentService.createQuotation({
           clienteId: this.quoteForm.clienteId,
           cliente: this.quoteForm.cliente,
+          fechaCotizacion: new Date().toISOString().slice(0, 10),
           servicio: this.quoteForm.servicio,
           serviceCode: this.quoteForm.serviceCode,
           shipper: this.quoteForm.shipper.trim(),
@@ -530,41 +555,27 @@ export class PricingViewComponent {
           incoterm: this.quoteForm.incoterm,
           ordenesCompra: ocs,
           aduanaPorArlogs: this.quoteForm.aduanaPorArlogs,
-          fechaCotizacion: new Date().toISOString().split('T')[0],
           valorVentaCotizado: Number(this.quoteForm.valorVentaCotizado) || 0,
           costoEstimadoCotizado: Number(this.quoteForm.costoEstimadoCotizado) || 0,
           plazoPagoDias: Number(this.quoteForm.plazoPagoDias) || 0
         });
         this.showQuoteModal = false;
-        this.toastService.success('Correcto — Creado', `Cotización ${created.id} emitida para ${created.cliente}.`);
+        this.toastService.success('Correcto — Creado', `Cotización ${created.id} registrada.`);
       }
     } catch (err: any) {
-      this.toastService.error('Incorrecto', err?.message ?? 'No se pudo guardar la cotización.');
+      this.toastService.error('Incorrecto', err?.message ?? 'Error al procesar la cotización.');
     }
   }
 
-  approveQuote(quoteId: string): void {
+  approveQuotation(q: Quotation): void {
     try {
-      const job = this.shipmentService.approveQuotation(quoteId);
+      const job = this.shipmentService.approveQuotation(q.id);
       this.toastService.success(
         'Correcto — Aprobado',
-        `Cotización ${quoteId} aprobada y activada en Operaciones como ${job.refArlogs}.`
+        `Cotización ${q.id} aprobada. Código generado: ${job.refArlogs}`
       );
     } catch (err: any) {
       this.toastService.error('Incorrecto', err?.message ?? 'No se pudo aprobar la cotización.');
-    }
-  }
-
-  executeDeleteQuote(): void {
-    const q = this.quotePendingDelete();
-    if (!q) return;
-    try {
-      this.shipmentService.deleteQuotation(q.id);
-      this.quotePendingDelete.set(null);
-      this.toastService.success('Eliminado', `Cotización ${q.id} eliminada correctamente.`);
-    } catch (err: any) {
-      this.quotePendingDelete.set(null);
-      this.toastService.error('Incorrecto', err?.message ?? 'No se pudo eliminar la cotización.');
     }
   }
 }

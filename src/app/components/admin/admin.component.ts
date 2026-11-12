@@ -24,16 +24,12 @@ interface UserFormState {
   template: `
     <div class="admin-panel py-2">
 
-      <!-- Top Header & Sub-navigation -->
+      <!-- Header & Action Ribbon -->
       <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-        <div>
-          <h5 class="fw-bold mb-0 text-dark font-heading">Administración, Credenciales y Auditoría</h5>
-          <span class="fs-xs text-muted">
-            Control de usuarios, emisión de accesos a clientes, permisos por rol y bitácora de cambios
-          </span>
-        </div>
+        <h5 class="fw-bold mb-0 text-dark font-heading">Administración y Seguridad</h5>
 
         <div class="d-flex align-items-center gap-2 flex-wrap w-100 w-lg-auto">
+          <!-- Segmented Tab Navigation -->
           <div class="d-flex flex-wrap gap-1 bg-white p-1 rounded-3 border border-slate-200 shadow-xs">
             <button
               type="button"
@@ -41,7 +37,7 @@ interface UserFormState {
               [class.btn-dark]="activeSection() === 'users'"
               [class.btn-light]="activeSection() !== 'users'"
               (click)="activeSection.set('users')">
-              <i class="bi bi-people-fill me-1"></i>Usuarios
+              <i class="bi bi-people-fill me-1"></i>Usuarios ({{ users().length }})
             </button>
             <button
               type="button"
@@ -49,7 +45,7 @@ interface UserFormState {
               [class.btn-dark]="activeSection() === 'clients'"
               [class.btn-light]="activeSection() !== 'clients'"
               (click)="activeSection.set('clients')">
-              <i class="bi bi-key-fill me-1"></i>Credenciales Clientes
+              <i class="bi bi-key-fill me-1"></i>Credenciales Clientes ({{ clientAccounts().length }})
             </button>
             <button
               type="button"
@@ -57,7 +53,7 @@ interface UserFormState {
               [class.btn-dark]="activeSection() === 'roles'"
               [class.btn-light]="activeSection() !== 'roles'"
               (click)="activeSection.set('roles')">
-              <i class="bi bi-grid-3x3-gap-fill me-1"></i>Roles y Pantallas
+              <i class="bi bi-grid-3x3-gap-fill me-1"></i>Roles y Permisos
             </button>
             <button
               type="button"
@@ -69,6 +65,7 @@ interface UserFormState {
             </button>
           </div>
 
+          <!-- Primary Modal Button -->
           <button
             type="button"
             class="btn btn-sm btn-brand-primary"
@@ -79,101 +76,112 @@ interface UserFormState {
         </div>
       </div>
 
-      <!-- Summary KPI Row -->
-      <div class="row g-3 mb-3">
-        <div class="col-6 col-lg-3">
-          <div class="card-executive p-3">
-            <div class="d-flex align-items-center justify-content-between text-muted fs-xs mb-1">
-              <span class="text-uppercase fw-semibold">Total Cuentas</span>
-              <i class="bi bi-people text-primary"></i>
+      <!-- Unified KPI Stat Strip (No bulky boxed cards) -->
+      <div class="stat-ribbon bg-white border border-slate-200 rounded-3 p-3 mb-3 shadow-xs">
+        <div class="row g-2 align-items-center text-center text-sm-start">
+          <div class="col-6 col-md-3 border-end-sm">
+            <div class="d-flex align-items-center gap-2 justify-content-center justify-content-sm-start">
+              <div class="stat-icon bg-slate-100 text-dark rounded-2 d-flex align-items-center justify-content-center">
+                <i class="bi bi-people"></i>
+              </div>
+              <div>
+                <span class="fs-xxs text-muted text-uppercase fw-semibold d-block">Total Cuentas</span>
+                <span class="fs-5 fw-bold mono-font text-dark">{{ users().length }}</span>
+              </div>
             </div>
-            <div class="fs-3 fw-bold text-dark mono-font lh-1">{{ users().length }}</div>
-            <div class="text-muted fs-xxs mt-1">{{ activeUsersCount() }} activas en plataforma</div>
           </div>
-        </div>
-
-        <div class="col-6 col-lg-3">
-          <div class="card-executive p-3">
-            <div class="d-flex align-items-center justify-content-between text-muted fs-xs mb-1">
-              <span class="text-uppercase fw-semibold">Accesos Clientes</span>
-              <i class="bi bi-key text-info"></i>
+          <div class="col-6 col-md-3 border-end-sm">
+            <div class="d-flex align-items-center gap-2 justify-content-center justify-content-sm-start">
+              <div class="stat-icon bg-blue-50 text-primary rounded-2 d-flex align-items-center justify-content-center">
+                <i class="bi bi-key"></i>
+              </div>
+              <div>
+                <span class="fs-xxs text-muted text-uppercase fw-semibold d-block">Accesos Clientes</span>
+                <span class="fs-5 fw-bold mono-font text-primary">{{ clientAccounts().length }}</span>
+              </div>
             </div>
-            <div class="fs-3 fw-bold text-primary mono-font lh-1">{{ clientAccounts().length }}</div>
-            <div class="text-muted fs-xxs mt-1">Credenciales aisladas por empresa</div>
           </div>
-        </div>
-
-        <div class="col-6 col-lg-3">
-          <div class="card-executive p-3">
-            <div class="d-flex align-items-center justify-content-between text-muted fs-xs mb-1">
-              <span class="text-uppercase fw-semibold">Roles Configurados</span>
-              <i class="bi bi-shield-check text-success"></i>
+          <div class="col-6 col-md-3 border-end-sm">
+            <div class="d-flex align-items-center gap-2 justify-content-center justify-content-sm-start">
+              <div class="stat-icon bg-emerald-50 text-success rounded-2 d-flex align-items-center justify-content-center">
+                <i class="bi bi-shield-check"></i>
+              </div>
+              <div>
+                <span class="fs-xxs text-muted text-uppercase fw-semibold d-block">Roles Configurados</span>
+                <span class="fs-5 fw-bold mono-font text-dark">{{ roleOrder.length }}</span>
+              </div>
             </div>
-            <div class="fs-3 fw-bold text-dark mono-font lh-1">{{ roleOrder.length }}</div>
-            <div class="text-muted fs-xxs mt-1">{{ screens.length }} pantallas controladas</div>
           </div>
-        </div>
-
-        <div class="col-6 col-lg-3">
-          <div class="card-executive p-3">
-            <div class="d-flex align-items-center justify-content-between text-muted fs-xs mb-1">
-              <span class="text-uppercase fw-semibold">Eventos Auditados</span>
-              <i class="bi bi-journal-text text-warning"></i>
+          <div class="col-6 col-md-3">
+            <div class="d-flex align-items-center gap-2 justify-content-center justify-content-sm-start">
+              <div class="stat-icon bg-amber-50 text-warning rounded-2 d-flex align-items-center justify-content-center">
+                <i class="bi bi-journal-text"></i>
+              </div>
+              <div>
+                <span class="fs-xxs text-muted text-uppercase fw-semibold d-block">Eventos Auditados</span>
+                <span class="fs-5 fw-bold mono-font text-dark">{{ auditLogs().length }}</span>
+              </div>
             </div>
-            <div class="fs-3 fw-bold text-dark mono-font lh-1">{{ auditLogs().length }}</div>
-            <div class="text-muted fs-xxs mt-1">Trazabilidad inmutable de cambios</div>
           </div>
         </div>
       </div>
 
-      <!-- SECTION 1: USERS CRUD -->
+      <!-- SECTION 1: USERS (Unified container with integrated filters & pagination) -->
       @if (activeSection() === 'users') {
-        <div class="card-executive p-3 mb-3">
-          <div class="row g-2 align-items-center">
-            <div class="col-12 col-md-5">
-              <div class="input-group input-group-sm">
-                <span class="input-group-text bg-white text-muted border-end-0">
-                  <i class="bi bi-search"></i>
-                </span>
-                <input
-                  type="text"
-                  class="form-control border-start-0"
-                  placeholder="Buscar por nombre, correo o cargo..."
-                  [ngModel]="searchQuery()"
-                  (ngModelChange)="searchQuery.set($event)">
+        <div class="card-executive overflow-hidden">
+          
+          <!-- Integrated Search Toolbar Header -->
+          <div class="p-3 bg-slate-50 border-bottom border-slate-200">
+            <div class="row g-2 align-items-center">
+              <div class="col-12 col-md-5">
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text bg-white text-muted border-end-0">
+                    <i class="bi bi-search"></i>
+                  </span>
+                  <input
+                    type="text"
+                    class="form-control border-start-0"
+                    placeholder="Buscar por nombre, correo o cargo..."
+                    [ngModel]="searchQuery()"
+                    (ngModelChange)="searchQuery.set($event); userPage.set(1)">
+                  @if (searchQuery()) {
+                    <button class="btn btn-outline-secondary" type="button" (click)="searchQuery.set(''); userPage.set(1)">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <div class="col-6 col-md-4">
+                <select class="form-select form-select-sm" [ngModel]="filterRole()" (ngModelChange)="filterRole.set($event); userPage.set(1)">
+                  <option value="ALL">Todos los roles</option>
+                  @for (r of roleOrder; track r) {
+                    <option [value]="r">{{ getRoleLabel(r) }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="col-6 col-md-3 text-end fs-xs text-muted">
+                <strong>{{ filteredUsers().length }}</strong> usuarios encontrados
               </div>
             </div>
-
-            <div class="col-6 col-md-3">
-              <select class="form-select form-select-sm" [ngModel]="filterRole()" (ngModelChange)="filterRole.set($event)">
-                <option value="ALL">Todos los roles</option>
-                @for (r of roleOrder; track r) {
-                  <option [value]="r">{{ getRoleLabel(r) }}</option>
-                }
-              </select>
-            </div>
-
-            <div class="col-6 col-md-4 text-md-end text-muted fs-xs">
-              Mostrando <strong class="text-dark">{{ filteredUsers().length }}</strong> de {{ users().length }} usuarios
-            </div>
           </div>
-        </div>
 
-        <div class="card-executive overflow-hidden">
+          <!-- Table -->
           <div class="table-responsive">
             <table class="table table-arlogs align-middle mb-0">
               <thead>
                 <tr>
                   <th>Usuario</th>
                   <th>Correo de Acceso</th>
-                  <th>Rol Asignado</th>
-                  <th>Pantallas Permitidas</th>
+                  <th>Rol</th>
+                  <th>Permisos</th>
                   <th>Estado</th>
                   <th class="text-end">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                @for (u of filteredUsers(); track u.id) {
+                @for (u of paginatedUsers(); track u.id) {
                   <tr>
                     <td>
                       <div class="d-flex align-items-center gap-2">
@@ -202,7 +210,7 @@ interface UserFormState {
                     </td>
 
                     <td>
-                      <span class="badge border fs-xxs" [ngClass]="getRoleBadgeClass(u.role)">
+                      <span [ngClass]="getRoleBadgeClass(u.role)">
                         {{ getRoleLabel(u.role) }}
                       </span>
                     </td>
@@ -210,7 +218,7 @@ interface UserFormState {
                     <td>
                       <div class="d-flex flex-wrap gap-1">
                         @for (scr of getAllowedScreens(u.role); track scr) {
-                          <span class="badge bg-slate-100 text-slate-700 border border-slate-200 fs-xxs">
+                          <span class="badge-subtle badge-subtle-slate fs-xxs py-0 px-2">
                             {{ getScreenLabel(scr) }}
                           </span>
                         }
@@ -227,7 +235,7 @@ interface UserFormState {
                           [disabled]="u.id === currentUser().id"
                           (change)="toggleActive(u.id)">
                         <label class="form-check-label fs-xxs" [class.text-success]="u.activo" [class.text-muted]="!u.activo">
-                          {{ u.activo ? 'Activo' : 'Suspendido' }}
+                          {{ u.activo ? 'Activo' : 'Inactivo' }}
                         </label>
                       </div>
                     </td>
@@ -262,62 +270,104 @@ interface UserFormState {
               </tbody>
             </table>
           </div>
+
+          <!-- Functional Pagination Footer -->
+          @if (filteredUsers().length > 0) {
+            <div class="p-2 px-3 bg-slate-50 border-top border-slate-200 d-flex align-items-center justify-content-between flex-wrap gap-2 fs-xs">
+              <div class="d-flex align-items-center gap-2 text-muted">
+                <span>
+                  Mostrando <strong>{{ userStartIndex() }}</strong>–<strong>{{ userEndIndex() }}</strong> de <strong>{{ filteredUsers().length }}</strong>
+                </span>
+                <span class="d-none d-sm-inline">&bull;</span>
+                <div class="d-flex align-items-center gap-1 d-none d-sm-flex">
+                  <span class="text-muted fs-xxs">Filas:</span>
+                  <div class="btn-group btn-group-sm pagination-size-group">
+                    <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="userPageSize() === 5" [class.btn-outline-secondary]="userPageSize() !== 5" (click)="userPageSize.set(5); userPage.set(1)">5</button>
+                    <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="userPageSize() === 10" [class.btn-outline-secondary]="userPageSize() !== 10" (click)="userPageSize.set(10); userPage.set(1)">10</button>
+                    <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="userPageSize() === 20" [class.btn-outline-secondary]="userPageSize() !== 20" (click)="userPageSize.set(20); userPage.set(1)">20</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="d-flex align-items-center gap-1">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary py-0 px-2 fs-xs"
+                  [disabled]="userPage() === 1"
+                  (click)="userPage.set(userPage() - 1)">
+                  <i class="bi bi-chevron-left"></i>
+                </button>
+                @for (p of userPageNumbers(); track p) {
+                  <button
+                    type="button"
+                    class="btn btn-sm py-0 px-2 fs-xs"
+                    [class.btn-dark]="userPage() === p"
+                    [class.btn-outline-secondary]="userPage() !== p"
+                    (click)="userPage.set(p)">
+                    {{ p }}
+                  </button>
+                }
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary py-0 px-2 fs-xs"
+                  [disabled]="userPage() === totalUserPages()"
+                  (click)="userPage.set(userPage() + 1)">
+                  <i class="bi bi-chevron-right"></i>
+                </button>
+              </div>
+            </div>
+          }
         </div>
       }
 
-      <!-- SECTION 2: CLIENT CREDENTIALS MANAGEMENT -->
+      <!-- SECTION 2: CLIENT CREDENTIALS (Clean, unified card presentation) -->
       @if (activeSection() === 'clients') {
-        <div class="card-executive p-3 mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
-          <div>
-            <h6 class="fw-bold text-dark mb-0">Emisión y Control de Credenciales para Clientes</h6>
-            <span class="text-muted fs-xs">
-              Cada cliente recibe un acceso único y estrictamente aislado para consultar sus embarques en línea sin saturar su correo.
-            </span>
+        <div class="card-executive p-3 mb-3">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <h6 class="fw-bold mb-0 text-dark">Credenciales de Acceso a Portales de Clientes</h6>
+            <button type="button" class="btn btn-sm btn-brand-primary" (click)="openClientCredModal()">
+              <i class="bi bi-key-fill me-1"></i>Emitir Credencial
+            </button>
           </div>
-          <button type="button" class="btn btn-sm btn-brand-primary" (click)="openClientCredModal()">
-            <i class="bi bi-plus-lg"></i>
-            <span>Nueva Credencial de Cliente</span>
-          </button>
         </div>
 
         <div class="row g-3">
           @for (cli of clientAccounts(); track cli.id) {
-            <div class="col-12 col-lg-6">
+            <div class="col-12 col-md-6">
               <div class="card-executive p-3 h-100 d-flex flex-column justify-content-between">
                 <div>
-                  <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                  <div class="d-flex align-items-center justify-content-between mb-2">
                     <div class="d-flex align-items-center gap-2">
-                      <div class="user-avatar-sm bg-slate-900 text-white rounded-3 d-flex align-items-center justify-content-center">
+                      <div class="user-avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center">
                         <i class="bi {{ cli.avatarIcon }}"></i>
                       </div>
                       <div>
-                        <div class="fw-bold text-dark">{{ cli.clienteNombre }}</div>
-                        <div class="text-muted fs-xxs">{{ cli.nombre }} &bull; {{ cli.cargo }}</div>
+                        <div class="fw-bold text-dark fs-xs">{{ cli.nombre }}</div>
+                        <div class="text-muted fs-xxs">{{ cli.clienteNombre }}</div>
                       </div>
                     </div>
-
-                    <span class="badge border fs-xxs" [class.bg-success]="cli.activo" [class.bg-opacity-10]="cli.activo" [class.text-success]="cli.activo" [class.border-success]="cli.activo" [class.bg-secondary]="!cli.activo" [class.text-white]="!cli.activo">
-                      {{ cli.activo ? 'Acceso Habilitado' : 'Revocado' }}
+                    <span class="badge" [class.bg-success]="cli.activo" [class.bg-secondary]="!cli.activo">
+                      {{ cli.activo ? 'Habilitado' : 'Revocado' }}
                     </span>
                   </div>
 
                   <div class="bg-slate-50 border border-slate-200 rounded-3 p-3 mb-3">
                     <div class="row g-2 fs-xs">
                       <div class="col-12 col-sm-6">
-                        <span class="text-muted fs-xxs d-block">Usuario / Correo Portal</span>
+                        <span class="text-muted fs-xxs d-block">Usuario</span>
                         <strong class="mono-font text-dark">{{ cli.email }}</strong>
                       </div>
                       <div class="col-12 col-sm-6">
-                        <span class="text-muted fs-xxs d-block">Contraseña Activa</span>
+                        <span class="text-muted fs-xxs d-block">Contraseña</span>
                         <strong class="mono-font text-primary">{{ cli.password }}</strong>
                       </div>
                       <div class="col-6">
-                        <span class="text-muted fs-xxs d-block">Código de Empresa</span>
+                        <span class="text-muted fs-xxs d-block">Empresa</span>
                         <span class="badge bg-white text-dark border border-slate-200 mono-font fs-xxs">{{ cli.clienteId }}</span>
                       </div>
                       <div class="col-6">
-                        <span class="text-muted fs-xxs d-block">Último Acceso</span>
-                        <span class="mono-font fs-xxs text-dark">{{ cli.ultimoAcceso || 'Sin ingresos aún' }}</span>
+                        <span class="text-muted fs-xxs d-block">Último Ingreso</span>
+                        <span class="mono-font fs-xxs text-dark">{{ cli.ultimoAcceso || 'Sin ingresos' }}</span>
                       </div>
                     </div>
                   </div>
@@ -326,17 +376,14 @@ interface UserFormState {
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pt-2 border-top border-slate-100">
                   <span class="fs-xxs text-muted">
                     Emitido: {{ cli.credencialEmitidaEn || 'Registro inicial' }}
-                    @if (cli.credencialEmitidaPor) {
-                      por <strong>{{ cli.credencialEmitidaPor }}</strong>
-                    }
                   </span>
 
                   <div class="d-flex gap-1">
                     <button type="button" class="btn btn-sm btn-outline-primary fs-xxs py-1 px-2" (click)="copyClientInvite(cli)">
-                      <i class="bi bi-clipboard me-1"></i>Copiar Acceso
+                      <i class="bi bi-clipboard me-1"></i>Copiar
                     </button>
                     <button type="button" class="btn btn-sm btn-outline-warning fs-xxs py-1 px-2" (click)="rotateClientPassword(cli)">
-                      <i class="bi bi-arrow-repeat me-1"></i>Rotar Clave
+                      <i class="bi bi-arrow-repeat me-1"></i>Rotar
                     </button>
                     <button type="button" class="btn btn-sm fs-xxs py-1 px-2" [class.btn-outline-danger]="cli.activo" [class.btn-outline-success]="!cli.activo" (click)="toggleActive(cli.id)">
                       {{ cli.activo ? 'Revocar' : 'Reactivar' }}
@@ -349,20 +396,17 @@ interface UserFormState {
         </div>
       }
 
-      <!-- SECTION 3: ROLES, RESPONSIBILITIES & SCREEN ACCESS MATRIX -->
+      <!-- SECTION 3: ROLES & SCREEN ACCESS MATRIX -->
       @if (activeSection() === 'roles') {
         <div class="card-executive overflow-hidden mb-3">
           <div class="p-3 bg-slate-50 border-bottom border-slate-200 d-flex align-items-center justify-content-between flex-wrap gap-2">
             <div>
               <strong class="text-dark fs-xs text-uppercase letter-spacing-wide">
-                Matriz de Acceso a Pantallas por Rol
+                Matriz de Permisos por Rol
               </strong>
-              <div class="text-muted fs-xxs">
-                Activa o revoca el acceso a cada módulo en tiempo real. La barra de navegación se actualiza al instante.
-              </div>
             </div>
             <span class="badge bg-blue-50 text-blue-700 border border-blue-200 fs-xxs">
-              Control de Permisos
+              Control en Tiempo Real
             </span>
           </div>
 
@@ -370,7 +414,7 @@ interface UserFormState {
             <table class="table table-arlogs align-middle mb-0">
               <thead>
                 <tr>
-                  <th style="min-width: 220px;">Rol del Sistema</th>
+                  <th style="min-width: 220px;">Rol</th>
                   @for (scr of screens; track scr.id) {
                     <th class="text-center">
                       <i class="bi {{ scr.icon }} me-1 text-primary"></i>{{ scr.label }}
@@ -406,11 +450,6 @@ interface UserFormState {
           </div>
         </div>
 
-        <div class="mb-2 d-flex align-items-center justify-content-between">
-          <h6 class="fw-bold text-dark mb-0 font-heading">Alcance Operativo: Qué debe hacer cada rol</h6>
-          <span class="fs-xxs text-muted">Guía de asignación para el Administrador</span>
-        </div>
-
         <div class="row g-3">
           @for (r of roleOrder; track r) {
             @let def = getRoleDef(r);
@@ -418,7 +457,7 @@ interface UserFormState {
               <div class="card-executive p-3 h-100 d-flex flex-column justify-content-between">
                 <div>
                   <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="badge border fs-xs" [ngClass]="getRoleBadgeClass(r)">
+                    <span [ngClass]="getRoleBadgeClass(r)">
                       {{ def.label }}
                     </span>
                     <span class="mono-font fs-xxs text-muted">
@@ -456,47 +495,55 @@ interface UserFormState {
         </div>
       }
 
-      <!-- SECTION 4: SYSTEM AUDIT LOG -->
+      <!-- SECTION 4: SYSTEM AUDIT LOG (Integrated container with filters & pagination) -->
       @if (activeSection() === 'audit') {
-        <div class="card-executive p-3 mb-3">
-          <div class="row g-2 align-items-center">
-            <div class="col-12 col-md-5">
-              <div class="input-group input-group-sm">
-                <span class="input-group-text bg-white text-muted border-end-0">
-                  <i class="bi bi-search"></i>
-                </span>
-                <input
-                  type="text"
-                  class="form-control border-start-0"
-                  placeholder="Buscar por referencia (A905), usuario o detalle..."
-                  [ngModel]="auditSearch()"
-                  (ngModelChange)="auditSearch.set($event)">
+        <div class="card-executive overflow-hidden">
+          
+          <!-- Integrated Search Toolbar Header -->
+          <div class="p-3 bg-slate-50 border-bottom border-slate-200">
+            <div class="row g-2 align-items-center">
+              <div class="col-12 col-md-5">
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text bg-white text-muted border-end-0">
+                    <i class="bi bi-search"></i>
+                  </span>
+                  <input
+                    type="text"
+                    class="form-control border-start-0"
+                    placeholder="Buscar por referencia, usuario o detalle..."
+                    [ngModel]="auditSearch()"
+                    (ngModelChange)="auditSearch.set($event); auditPage.set(1)">
+                  @if (auditSearch()) {
+                    <button class="btn btn-outline-secondary" type="button" (click)="auditSearch.set(''); auditPage.set(1)">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <div class="col-6 col-md-4">
+                <select class="form-select form-select-sm" [ngModel]="auditCategoryFilter()" (ngModelChange)="auditCategoryFilter.set($event); auditPage.set(1)">
+                  <option value="ALL">Todas las categorías</option>
+                  <option value="OPERACION_HITOS">Cambios de Hitos</option>
+                  <option value="PRICING_QR">Cotizaciones QR</option>
+                  <option value="FACTURACION">Facturación</option>
+                  <option value="BODEGA_KARDEX">Bodegas Kardex</option>
+                  <option value="GERENCIA_SLA">Umbral SLA</option>
+                  <option value="CREDENCIAL_CLIENTE">Credenciales</option>
+                  <option value="SEGURIDAD_ROLES">Roles y Usuarios</option>
+                  <option value="SESION">Inicios de Sesión</option>
+                </select>
+              </div>
+
+              <div class="col-6 col-md-3 text-end">
+                <button type="button" class="btn btn-sm btn-outline-success w-100" (click)="exportAudit()">
+                  <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
+                </button>
               </div>
             </div>
-
-            <div class="col-6 col-md-4">
-              <select class="form-select form-select-sm" [ngModel]="auditCategoryFilter()" (ngModelChange)="auditCategoryFilter.set($event)">
-                <option value="ALL">Todas las categorías</option>
-                <option value="OPERACION_HITOS">Cambios de Hitos / Fechas</option>
-                <option value="PRICING_QR">Cotizaciones QR</option>
-                <option value="FACTURACION">Facturación y Cobros</option>
-                <option value="BODEGA_KARDEX">Bodegas Kardex / Remisión</option>
-                <option value="GERENCIA_SLA">Umbral SLA Gerencia</option>
-                <option value="CREDENCIAL_CLIENTE">Credenciales a Clientes</option>
-                <option value="SEGURIDAD_ROLES">Roles y Usuarios</option>
-                <option value="SESION">Inicios / Intentos de Sesión</option>
-              </select>
-            </div>
-
-            <div class="col-6 col-md-3 text-end">
-              <button type="button" class="btn btn-sm btn-outline-success w-100" (click)="exportAudit()">
-                <i class="bi bi-file-earmark-excel me-1"></i>Exportar Auditoría
-              </button>
-            </div>
           </div>
-        </div>
 
-        <div class="card-executive overflow-hidden">
+          <!-- Audit Table -->
           <div class="table-responsive">
             <table class="table table-arlogs align-middle mb-0">
               <thead>
@@ -504,13 +551,13 @@ interface UserFormState {
                   <th>Fecha / Hora</th>
                   <th>Actor</th>
                   <th>Categoría</th>
-                  <th>Entidad / Ref</th>
+                  <th>Referencia</th>
                   <th>Acción</th>
-                  <th>Detalle de Trazabilidad</th>
+                  <th>Detalle</th>
                 </tr>
               </thead>
               <tbody>
-                @for (log of filteredAuditLogs(); track log.id) {
+                @for (log of paginatedAuditLogs(); track log.id) {
                   <tr>
                     <td class="mono-font fs-xxs text-muted text-nowrap">{{ log.timestamp }}</td>
                     <td>
@@ -540,6 +587,53 @@ interface UserFormState {
               </tbody>
             </table>
           </div>
+
+          <!-- Functional Audit Pagination Footer -->
+          @if (filteredAuditLogs().length > 0) {
+            <div class="p-2 px-3 bg-slate-50 border-top border-slate-200 d-flex align-items-center justify-content-between flex-wrap gap-2 fs-xs">
+              <div class="d-flex align-items-center gap-2 text-muted">
+                <span>
+                  Mostrando <strong>{{ auditStartIndex() }}</strong>–<strong>{{ auditEndIndex() }}</strong> de <strong>{{ filteredAuditLogs().length }}</strong> eventos
+                </span>
+                <span class="d-none d-sm-inline">&bull;</span>
+                <div class="d-flex align-items-center gap-1 d-none d-sm-flex">
+                  <span class="text-muted fs-xxs">Filas:</span>
+                  <div class="btn-group btn-group-sm pagination-size-group">
+                    <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="auditPageSize() === 5" [class.btn-outline-secondary]="auditPageSize() !== 5" (click)="auditPageSize.set(5); auditPage.set(1)">5</button>
+                    <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="auditPageSize() === 10" [class.btn-outline-secondary]="auditPageSize() !== 10" (click)="auditPageSize.set(10); auditPage.set(1)">10</button>
+                    <button type="button" class="btn btn-xs py-0 px-2 fs-xxs" [class.btn-dark]="auditPageSize() === 25" [class.btn-outline-secondary]="auditPageSize() !== 25" (click)="auditPageSize.set(25); auditPage.set(1)">25</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="d-flex align-items-center gap-1">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary py-0 px-2 fs-xs"
+                  [disabled]="auditPage() === 1"
+                  (click)="auditPage.set(auditPage() - 1)">
+                  <i class="bi bi-chevron-left"></i>
+                </button>
+                @for (p of auditPageNumbers(); track p) {
+                  <button
+                    type="button"
+                    class="btn btn-sm py-0 px-2 fs-xs"
+                    [class.btn-dark]="auditPage() === p"
+                    [class.btn-outline-secondary]="auditPage() !== p"
+                    (click)="auditPage.set(p)">
+                    {{ p }}
+                  </button>
+                }
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary py-0 px-2 fs-xs"
+                  [disabled]="auditPage() === totalAuditPages()"
+                  (click)="auditPage.set(auditPage() + 1)">
+                  <i class="bi bi-chevron-right"></i>
+                </button>
+              </div>
+            </div>
+          }
         </div>
       }
 
@@ -550,43 +644,36 @@ interface UserFormState {
             <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
               <div class="modal-header bg-slate-900 text-white border-0 py-3">
                 <div class="d-flex align-items-center gap-2">
-                  <i class="bi" [class.bi-person-plus-fill]="!isEditMode" [class.bi-pencil-square]="isEditMode"></i>
+                  <i class="bi bi-shield-lock-fill text-warning"></i>
                   <h6 class="modal-title mb-0 fw-bold font-heading">
-                    {{ isEditMode ? 'Editar Usuario y Asignación de Rol' : 'Registrar Nuevo Usuario' }}
+                    {{ isEditMode ? 'Editar Usuario: ' + form.nombre : 'Crear Nuevo Usuario' }}
                   </h6>
                 </div>
                 <button type="button" class="btn-close btn-close-white" (click)="closeUserModal()"></button>
               </div>
 
-              <form (ngSubmit)="saveUser()">
+              <form (ngSubmit)="submitUserForm()">
                 <div class="modal-body p-4">
                   @if (modalError()) {
-                    <div class="alert alert-danger py-2 px-3 fs-xs mb-3">
-                      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ modalError() }}
-                    </div>
+                    <div class="alert alert-danger py-2 px-3 fs-xs mb-3">{{ modalError() }}</div>
                   }
-
                   <div class="row g-3">
                     <div class="col-12 col-md-6">
-                      <label class="form-label fs-xs fw-semibold">Nombre completo</label>
-                      <input type="text" class="form-control" name="nombre" [(ngModel)]="form.nombre" required placeholder="Ej. Sofía Mendoza">
+                      <label class="form-label fs-xs fw-semibold">Nombre Completo</label>
+                      <input type="text" class="form-control" name="nombre" [(ngModel)]="form.nombre" required placeholder="Ej. Ing. Carlos Pérez">
                     </div>
-
                     <div class="col-12 col-md-6">
-                      <label class="form-label fs-xs fw-semibold">Correo corporativo</label>
-                      <input type="email" class="form-control mono-font" name="email" [(ngModel)]="form.email" required placeholder="smendoza@arlogs.com">
+                      <label class="form-label fs-xs fw-semibold">Correo de Acceso</label>
+                      <input type="email" class="form-control mono-font" name="email" [(ngModel)]="form.email" required placeholder="carlos@arlogs.com">
                     </div>
-
                     <div class="col-12 col-md-6">
                       <label class="form-label fs-xs fw-semibold">Contraseña</label>
-                      <input type="text" class="form-control mono-font" name="password" [(ngModel)]="form.password" required placeholder="Mínimo 6 caracteres">
+                      <input type="text" class="form-control mono-font" name="password" [(ngModel)]="form.password" required placeholder="••••••••">
                     </div>
-
                     <div class="col-12 col-md-6">
-                      <label class="form-label fs-xs fw-semibold">Cargo / Puesto</label>
-                      <input type="text" class="form-control" name="cargo" [(ngModel)]="form.cargo" placeholder="Ej. Analista de Operaciones">
+                      <label class="form-label fs-xs fw-semibold">Cargo Operativo</label>
+                      <input type="text" class="form-control" name="cargo" [(ngModel)]="form.cargo" required placeholder="Ej. Coordinador de Operaciones">
                     </div>
-
                     <div class="col-12 col-md-6">
                       <label class="form-label fs-xs fw-semibold">Rol Asignado</label>
                       <select class="form-select" name="role" [(ngModel)]="form.role">
@@ -612,24 +699,6 @@ interface UserFormState {
                         <label class="form-check-label fs-xs fw-semibold" for="userActiveSwitch">
                           Cuenta activa para iniciar sesión
                         </label>
-                      </div>
-                    </div>
-
-                    <div class="col-12">
-                      @let previewDef = getRoleDef(form.role);
-                      <div class="bg-slate-50 border border-slate-200 rounded-3 p-3">
-                        <div class="fs-xs fw-bold text-dark mb-1">
-                          <i class="bi bi-info-circle text-primary me-1"></i>Responsabilidades del rol {{ previewDef.label }}
-                        </div>
-                        <p class="fs-xs text-muted mb-2">{{ previewDef.summary }}</p>
-                        <div class="d-flex flex-wrap align-items-center gap-1">
-                          <span class="fs-xxs fw-semibold text-dark me-1">Acceso a pantallas:</span>
-                          @for (scr of getAllowedScreens(form.role); track scr) {
-                            <span class="badge bg-white text-dark border border-slate-200 fs-xxs">
-                              {{ getScreenLabel(scr) }}
-                            </span>
-                          }
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -668,26 +737,23 @@ interface UserFormState {
                   }
                   <div class="d-flex flex-column gap-3">
                     <div>
-                      <label class="form-label fs-xs fw-semibold">Empresa Cliente (Tenant Aislado)</label>
+                      <label class="form-label fs-xs fw-semibold">Empresa Cliente</label>
                       <select class="form-select" name="credClientId" [(ngModel)]="clientCredForm.clienteId">
                         <option value="CLI-001">Industrias Andinas DEMO S.A. (CLI-001)</option>
                         <option value="CLI-002">Comercial Pacífico DEMO Cía. Ltda. (CLI-002)</option>
                       </select>
                     </div>
                     <div>
-                      <label class="form-label fs-xs fw-semibold">Nombre del Contacto Autorizado</label>
+                      <label class="form-label fs-xs fw-semibold">Nombre del Contacto</label>
                       <input type="text" class="form-control" name="credNombre" [(ngModel)]="clientCredForm.nombre" required placeholder="Ej. Ing. Valeria Ponce">
                     </div>
                     <div>
-                      <label class="form-label fs-xs fw-semibold">Correo de Acceso al Portal</label>
+                      <label class="form-label fs-xs fw-semibold">Correo de Acceso</label>
                       <input type="email" class="form-control mono-font" name="credEmail" [(ngModel)]="clientCredForm.email" required placeholder="vponce@cliente.com">
                     </div>
                     <div>
                       <label class="form-label fs-xs fw-semibold">Cargo</label>
                       <input type="text" class="form-control" name="credCargo" [(ngModel)]="clientCredForm.cargo" placeholder="Ej. Analista de Comercio Exterior">
-                    </div>
-                    <div class="bg-blue-50 border border-blue-200 rounded-3 p-2 px-3 fs-xxs text-blue-700">
-                      <i class="bi bi-shield-lock me-1"></i>Se generará automáticamente una contraseña temporal segura y quedará registrado en la Auditoría.
                     </div>
                   </div>
                 </div>
@@ -730,6 +796,7 @@ interface UserFormState {
   `,
   styles: [`
     .user-avatar-sm { width: 32px; height: 32px; }
+    .stat-icon { width: 32px; height: 32px; font-size: 1rem; }
     .bg-slate-50 { background-color: #F8FAFC !important; }
     .bg-slate-100 { background-color: #F1F5F9 !important; }
     .bg-slate-900 { background-color: #0F172A !important; }
@@ -739,7 +806,13 @@ interface UserFormState {
     .bg-blue-50 { background-color: #EFF6FF !important; }
     .text-blue-700 { color: #1D4ED8 !important; }
     .border-blue-200 { border-color: #BFDBFE !important; }
+    .bg-emerald-50 { background-color: #ECFDF5 !important; }
+    .bg-amber-50 { background-color: #FFFBEB !important; }
     .letter-spacing-wide { letter-spacing: 0.05em; }
+
+    @media (min-width: 576px) {
+      .border-end-sm { border-right: 1px solid #E2E8F0; }
+    }
   `]
 })
 export class AdminComponent {
@@ -773,6 +846,14 @@ export class AdminComponent {
   auditSearch = signal('');
   auditCategoryFilter = signal<AuditCategory | 'ALL'>('ALL');
 
+  // Pagination for Users
+  userPage = signal(1);
+  userPageSize = signal(5);
+
+  // Pagination for Audit
+  auditPage = signal(1);
+  auditPageSize = signal(6);
+
   showUserModal = false;
   showClientCredModal = false;
   isEditMode = false;
@@ -784,11 +865,11 @@ export class AdminComponent {
     email: string;
     cargo: string;
   } = {
-      clienteId: 'CLI-001',
-      nombre: '',
-      email: '',
-      cargo: ''
-    };
+    clienteId: 'CLI-001',
+    nombre: '',
+    email: '',
+    cargo: ''
+  };
 
   readonly activeUsersCount = computed(() => this.users().filter(u => u.activo).length);
 
@@ -806,6 +887,29 @@ export class AdminComponent {
     });
   });
 
+  readonly totalUserPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredUsers().length / this.userPageSize()))
+  );
+
+  readonly paginatedUsers = computed(() => {
+    const page = Math.min(this.userPage(), this.totalUserPages());
+    const start = (page - 1) * this.userPageSize();
+    return this.filteredUsers().slice(start, start + this.userPageSize());
+  });
+
+  readonly userStartIndex = computed(() =>
+    this.filteredUsers().length === 0 ? 0 : (this.userPage() - 1) * this.userPageSize() + 1
+  );
+
+  readonly userEndIndex = computed(() =>
+    Math.min(this.userPage() * this.userPageSize(), this.filteredUsers().length)
+  );
+
+  readonly userPageNumbers = computed(() => {
+    const total = this.totalUserPages();
+    return Array.from({ length: total }, (_, i) => i + 1);
+  });
+
   readonly filteredAuditLogs = computed(() => {
     const q = this.auditSearch().trim().toLowerCase();
     const cat = this.auditCategoryFilter();
@@ -819,6 +923,29 @@ export class AdminComponent {
         l.detalle.toLowerCase().includes(q)
       );
     });
+  });
+
+  readonly totalAuditPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredAuditLogs().length / this.auditPageSize()))
+  );
+
+  readonly paginatedAuditLogs = computed(() => {
+    const page = Math.min(this.auditPage(), this.totalAuditPages());
+    const start = (page - 1) * this.auditPageSize();
+    return this.filteredAuditLogs().slice(start, start + this.auditPageSize());
+  });
+
+  readonly auditStartIndex = computed(() =>
+    this.filteredAuditLogs().length === 0 ? 0 : (this.auditPage() - 1) * this.auditPageSize() + 1
+  );
+
+  readonly auditEndIndex = computed(() =>
+    Math.min(this.auditPage() * this.auditPageSize(), this.filteredAuditLogs().length)
+  );
+
+  readonly auditPageNumbers = computed(() => {
+    const total = this.totalAuditPages();
+    return Array.from({ length: total }, (_, i) => i + 1);
   });
 
   emptyForm(): UserFormState {
@@ -859,41 +986,85 @@ export class AdminComponent {
 
   getRoleBadgeClass(role: UserRole): string {
     switch (role) {
-      case 'admin': return 'bg-dark text-white border-dark';
-      case 'gerencia': return 'bg-primary bg-opacity-10 text-primary border-primary border-opacity-25';
-      case 'operaciones': return 'bg-info bg-opacity-10 text-info border-info border-opacity-25';
-      case 'pricing': return 'bg-warning bg-opacity-10 text-warning border-warning border-opacity-25';
-      case 'contabilidad': return 'bg-secondary bg-opacity-10 text-dark border-secondary border-opacity-25';
-      case 'bodegas': return 'bg-primary bg-opacity-10 text-primary border-primary border-opacity-25';
+      case 'admin':
+        return 'badge-subtle badge-subtle-dark';
+      case 'gerencia':
+        return 'badge-subtle badge-subtle-blue';
+      case 'operaciones':
+        return 'badge-subtle badge-subtle-slate';
+      case 'pricing':
+        return 'badge-subtle badge-subtle-amber';
+      case 'contabilidad':
+        return 'badge-subtle badge-subtle-slate';
+      case 'bodegas':
+        return 'badge-subtle badge-subtle-slate';
       case 'cliente_a':
+        return 'badge-subtle badge-subtle-emerald';
       case 'cliente_b':
-        return 'bg-success bg-opacity-10 text-success border-success border-opacity-25';
+        return 'badge-subtle badge-subtle-emerald';
+      default:
+        return 'badge-subtle badge-subtle-slate';
     }
   }
 
   getAuditBadgeClass(cat: AuditCategory): string {
     switch (cat) {
-      case 'OPERACION_HITOS': return 'bg-info bg-opacity-10 text-info border-info border-opacity-25';
-      case 'PRICING_QR': return 'bg-primary bg-opacity-10 text-primary border-primary border-opacity-25';
-      case 'FACTURACION': return 'bg-success bg-opacity-10 text-success border-success border-opacity-25';
-      case 'BODEGA_KARDEX': return 'bg-warning bg-opacity-10 text-warning border-warning border-opacity-25';
-      case 'GERENCIA_SLA': return 'bg-warning bg-opacity-10 text-warning border-warning border-opacity-25';
-      case 'CREDENCIAL_CLIENTE': return 'bg-success bg-opacity-10 text-success border-success border-opacity-25';
-      case 'SEGURIDAD_ROLES': return 'bg-dark text-white border-dark';
-      case 'SESION': return 'bg-secondary bg-opacity-10 text-dark border-secondary border-opacity-25';
+      case 'OPERACION_HITOS':
+        return 'badge-subtle badge-subtle-slate';
+      case 'PRICING_QR':
+        return 'badge-subtle badge-subtle-amber';
+      case 'FACTURACION':
+        return 'badge-subtle badge-subtle-emerald';
+      case 'BODEGA_KARDEX':
+        return 'badge-subtle badge-subtle-blue';
+      case 'GERENCIA_SLA':
+        return 'badge-subtle badge-subtle-rose';
+      case 'CREDENCIAL_CLIENTE':
+        return 'badge-subtle badge-subtle-slate';
+      case 'SEGURIDAD_ROLES':
+        return 'badge-subtle badge-subtle-dark';
+      case 'SESION':
+        return 'badge-subtle badge-subtle-slate';
+      default:
+        return 'badge-subtle badge-subtle-slate';
     }
   }
 
-  openCreateModal(): void {
+  onToggleScreen(role: UserRole, screen: ScreenId) {
+    const current = this.hasAccess(role, screen);
+    this.authService.toggleRoleScreenAccess(role, screen);
+    this.toastService.info(
+      'Permiso actualizado',
+      `${this.getRoleLabel(role)} &rarr; ${this.getScreenLabel(screen)}: ${!current ? 'Permitido' : 'Revocado'}`
+    );
+  }
+
+  toggleActive(userId: string) {
+    const target = this.users().find(u => u.id === userId);
+    if (!target) return;
+    if (target.id === this.currentUser().id) {
+      this.toastService.warning('Acción no permitida', 'No puedes suspender tu propia cuenta activa.');
+      return;
+    }
+    const res = this.authService.toggleUserActive(userId);
+    if (res.ok) {
+      const nextState = !target.activo;
+      this.toastService.info(
+        nextState ? 'Cuenta activada' : 'Cuenta suspendida',
+        `El usuario ${target.nombre} ahora está ${nextState ? 'Activo' : 'Suspendido'}.`
+      );
+    }
+  }
+
+  openCreateModal() {
     this.isEditMode = false;
-    this.modalError.set(null);
     this.form = this.emptyForm();
+    this.modalError.set(null);
     this.showUserModal = true;
   }
 
-  openEditModal(user: RoleUser): void {
+  openEditModal(user: RoleUser) {
     this.isEditMode = true;
-    this.modalError.set(null);
     this.form = {
       id: user.id,
       nombre: user.nombre,
@@ -902,133 +1073,137 @@ export class AdminComponent {
       cargo: user.cargo,
       role: user.role,
       activo: user.activo,
-      clienteId: user.clienteId || (user.role === 'cliente_b' ? 'CLI-002' : 'CLI-001')
+      clienteId: user.clienteId ?? 'CLI-001'
     };
+    this.modalError.set(null);
     this.showUserModal = true;
   }
 
-  closeUserModal(): void {
+  closeUserModal() {
     this.showUserModal = false;
     this.modalError.set(null);
   }
 
-  saveUser(): void {
-    this.modalError.set(null);
-    const payload = {
-      nombre: this.form.nombre,
-      email: this.form.email,
-      password: this.form.password,
-      cargo: this.form.cargo,
-      role: this.form.role,
-      activo: this.form.activo,
-      clienteId: this.form.role === 'cliente_a' || this.form.role === 'cliente_b' ? this.form.clienteId : undefined
-    };
+  submitUserForm() {
+    if (!this.form.nombre || !this.form.email || !this.form.password) {
+      this.modalError.set('Completa los campos obligatorios.');
+      return;
+    }
 
     if (this.isEditMode && this.form.id) {
-      const res = this.authService.updateUser(this.form.id, payload);
+      const res = this.authService.updateUser(this.form.id, {
+        nombre: this.form.nombre,
+        email: this.form.email,
+        password: this.form.password,
+        cargo: this.form.cargo,
+        role: this.form.role,
+        activo: this.form.activo,
+        clienteId: this.form.clienteId
+      });
       if (!res.ok) {
-        const err = res.error ?? 'Error al actualizar usuario.';
-        this.modalError.set(err);
-        this.toastService.error('Incorrecto', err);
+        this.modalError.set(res.error || 'Error al actualizar');
         return;
       }
-      this.showUserModal = false;
-      this.toastService.success('Actualizado', `Usuario "${payload.nombre}" actualizado correctamente.`);
+      this.toastService.success('Usuario actualizado', `${this.form.nombre} guardado exitosamente.`);
     } else {
-      const res = this.authService.createUser(payload);
+      const res = this.authService.createUser({
+        nombre: this.form.nombre,
+        email: this.form.email,
+        password: this.form.password,
+        cargo: this.form.cargo,
+        role: this.form.role,
+        activo: this.form.activo,
+        clienteId: this.form.clienteId
+      });
       if (!res.ok) {
-        const err = res.error ?? 'Error al crear usuario.';
-        this.modalError.set(err);
-        this.toastService.error('Incorrecto', err);
+        this.modalError.set(res.error || 'Error al crear');
         return;
       }
-      this.showUserModal = false;
-      this.toastService.success('Correcto — Creado', `Usuario "${payload.nombre}" registrado con rol ${this.getRoleLabel(payload.role)}.`);
+      this.toastService.success('Usuario creado', `Cuenta creada para ${this.form.nombre}.`);
     }
+
+    this.closeUserModal();
   }
 
-  openClientCredModal(): void {
-    this.modalError.set(null);
-    this.clientCredForm = { clienteId: 'CLI-001', nombre: '', email: '', cargo: '' };
-    this.showClientCredModal = true;
-  }
-
-  submitClientCredential(): void {
-    this.modalError.set(null);
-    const res = this.authService.issueClientCredentials(this.clientCredForm);
-    if (!res.ok || !res.user) {
-      const err = res.error ?? 'No se pudo emitir la credencial.';
-      this.modalError.set(err);
-      this.toastService.error('Incorrecto', err);
+  confirmDeleteUser(user: RoleUser) {
+    if (user.id === this.currentUser().id) {
+      this.toastService.warning('Acción denegada', 'No puedes eliminar la cuenta en sesión actual.');
       return;
     }
-    this.showClientCredModal = false;
-    this.toastService.success(
-      'Correcto — Credencial emitida',
-      `Acceso creado para ${res.user.email} (clave: ${res.user.password}).`
-    );
-  }
-
-  rotateClientPassword(user: RoleUser): void {
-    const res = this.authService.regenerateClientPassword(user.id);
-    if (!res.ok) {
-      this.toastService.error('Incorrecto', res.error ?? 'No se pudo rotar la clave.');
-      return;
-    }
-    this.toastService.success('Actualizado — Clave rotada', `Nueva clave temporal para ${user.email}: ${res.newPassword}`);
-  }
-
-  copyClientInvite(user: RoleUser): void {
-    const text = `Portal ARLOGS: ${window.location.origin} | Usuario: ${user.email} | Clave: ${user.password} | Empresa: ${user.clienteNombre}`;
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(text).catch(() => { });
-    }
-    this.toastService.success('Correcto — Copiado', `Credenciales de ${user.email} copiadas al portapapeles.`);
-  }
-
-  toggleActive(id: string): void {
-    const target = this.users().find(u => u.id === id);
-    const res = this.authService.toggleUserActive(id);
-    if (!res.ok && res.error) {
-      this.toastService.error('Incorrecto', res.error);
-      return;
-    }
-    if (target) {
-      const nextState = !target.activo ? 'habilitado' : 'suspendido';
-      this.toastService.success('Actualizado', `Acceso de "${target.nombre}" ${nextState}.`);
-    }
-  }
-
-  confirmDeleteUser(user: RoleUser): void {
     this.userPendingDelete.set(user);
   }
 
-  executeDelete(): void {
-    const target = this.userPendingDelete();
-    if (!target) return;
-    const res = this.authService.deleteUser(target.id);
+  executeDelete() {
+    const user = this.userPendingDelete();
+    if (!user) return;
+    const res = this.authService.deleteUser(user.id);
     this.userPendingDelete.set(null);
+    if (res.ok) {
+      this.toastService.info('Usuario eliminado', `Se eliminó la cuenta de ${user.nombre}.`);
+    } else {
+      this.toastService.error('Error al eliminar', res.error || 'No se pudo eliminar el usuario.');
+    }
+  }
+
+  openClientCredModal() {
+    this.clientCredForm = {
+      clienteId: 'CLI-001',
+      nombre: '',
+      email: '',
+      cargo: ''
+    };
+    this.modalError.set(null);
+    this.showClientCredModal = true;
+  }
+
+  submitClientCredential() {
+    if (!this.clientCredForm.nombre || !this.clientCredForm.email) {
+      this.modalError.set('Nombre y correo son obligatorios.');
+      return;
+    }
+    const res = this.authService.issueClientCredentials({
+      clienteId: this.clientCredForm.clienteId,
+      nombre: this.clientCredForm.nombre,
+      email: this.clientCredForm.email,
+      cargo: this.clientCredForm.cargo
+    });
     if (!res.ok) {
-      this.toastService.error('Incorrecto', res.error ?? 'No se pudo eliminar el usuario.');
+      this.modalError.set(res.error || 'Error al emitir credencial.');
       return;
     }
-    this.toastService.success('Eliminado', `Usuario "${target.nombre}" eliminado del sistema.`);
+    this.showClientCredModal = false;
+    this.toastService.success('Credencial emitida', `Acceso creado para ${this.clientCredForm.nombre}.`);
   }
 
-  onToggleScreen(role: UserRole, screen: ScreenId): void {
-    const res = this.authService.toggleRoleScreenAccess(role, screen);
-    if (!res.ok && res.error) {
-      this.toastService.error('Incorrecto', res.error);
-      return;
+  copyClientInvite(cli: RoleUser) {
+    const text = `ARLOGS Portal Cliente\nUsuario: ${cli.email}\nContraseña: ${cli.password}\nEmpresa: ${cli.clienteNombre}`;
+    navigator.clipboard?.writeText(text);
+    this.toastService.info('Copiado al portapapeles', `Datos de acceso de ${cli.nombre} listos para enviar.`);
+  }
+
+  rotateClientPassword(cli: RoleUser) {
+    const res = this.authService.regenerateClientPassword(cli.id);
+    if (res.ok) {
+      this.toastService.success('Clave rotada', `Nueva contraseña generada para ${cli.nombre}.`);
+    } else {
+      this.toastService.error('Error', res.error || 'No se pudo rotar la contraseña.');
     }
-    this.toastService.success(
-      'Actualizado — Permisos',
-      `Acceso a ${this.getScreenLabel(screen)} actualizado para ${this.getRoleLabel(role)}.`
-    );
   }
 
-  exportAudit(): void {
-    this.auditService.exportAuditExcel(this.filteredAuditLogs());
-    this.toastService.success('Correcto — Exportado', 'Bitácora de auditoría descargada en Excel (.xlsx).');
+  exportAudit() {
+    const lines = [
+      'ID,Timestamp,Usuario,Email,Rol,Categoria,Entidad,Accion,Detalle',
+      ...this.filteredAuditLogs().map(l =>
+        `"${l.id}","${l.timestamp}","${l.usuario}","${l.email}","${l.rol}","${l.categoria}","${l.entidad}","${l.accion}","${l.detalle.replace(/"/g, '""')}"`
+      )
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `arlogs_auditoria_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    this.toastService.success('Exportación completa', 'Bitácora de auditoría descargada en formato CSV.');
   }
 }
