@@ -1,0 +1,56 @@
+<app-toast-container></app-toast-container>
+
+@if (!isLoggedIn()) {
+  <app-login (loginSuccess)="onLoginSuccess($event)"></app-login>
+} @else {
+  <div class="min-vh-100 d-flex flex-column position-relative bg-surface-canvas app-reveal">
+
+    <!-- Application Shell -->
+    <div class="position-relative z-1 d-flex flex-column flex-grow-1">
+      
+      <!-- Enterprise Header -->
+      <app-header 
+        [activeTab]="activeTab()" 
+        (tabChange)="onTabChange($event)"
+        (logoutRequested)="onLogout()">
+      </app-header>
+
+      <!-- Main Workspace Content -->
+      <main class="flex-grow-1 container-fluid px-3 px-lg-4 py-3">
+        @switch (activeTab()) {
+          @case ('gerencia') {
+            <app-executive-dashboard></app-executive-dashboard>
+          }
+          @case ('operaciones') {
+            <app-operations-view></app-operations-view>
+          }
+          @case ('pricing') {
+            <app-pricing-view></app-pricing-view>
+          }
+          @case ('cliente') {
+            <app-client-portal></app-client-portal>
+          }
+          @case ('admin') {
+            <app-admin></app-admin>
+          }
+        }
+      </main>
+
+      <!-- Clean Footer -->
+      <footer class="bg-white border-top border-slate-200 py-3 mt-auto fs-xs text-muted">
+        <div class="container-fluid px-3 px-lg-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div class="d-flex align-items-center gap-2">
+            <strong class="text-dark">ARLOGS</strong>
+            <span>&bull;</span>
+            <span>Seguimiento Operativo y Consolidación Multimodal</span>
+          </div>
+
+          <div class="fs-xxs text-muted">
+            Control Logístico Integral &bull; Aduanas &amp; Embarques
+          </div>
+        </div>
+      </footer>
+
+    </div>
+  </div>
+}

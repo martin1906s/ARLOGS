@@ -1,0 +1,26 @@
+.bg-surface-canvas {
+  background-color: var(--surface-bg);
+}
+
+.app-reveal {
+  animation: appScreenReveal 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes appScreenReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.fs-xs { font-size: 0.75rem; }
+.fs-xxs { font-size: 0.68rem; }
+.mono-font { font-family: var(--font-mono); }
+.border-slate-200 { border-color: #E2E8F0 !important; }
+

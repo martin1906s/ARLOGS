@@ -1,0 +1,304 @@
+/* ==========================================================================
+   ARLOGS Enterprise Logistics Design System
+   High-density, professional logistics console with subtle 3D background
+   ========================================================================== */
+
+/* Fonts loaded in index.html */
+
+:root {
+  /* Brand Core */
+  --brand-navy: #0F172A;
+  --brand-navy-card: #1E293B;
+  --brand-blue: #2563EB;
+  --brand-blue-hover: #1D4ED8;
+  --brand-cyan: #0284C7;
+  --brand-cyan-soft: rgba(2, 132, 199, 0.08);
+
+  /* Neutrals */
+  --surface-bg: #F8FAFC;
+  --surface-card: rgba(255, 255, 255, 0.90);
+  --surface-card-subtle: rgba(241, 245, 249, 0.85);
+  --border-color: rgba(226, 232, 240, 0.85);
+  --border-color-light: rgba(241, 245, 249, 0.9);
+  
+  --text-main: #0F172A;
+  --text-muted: #64748B;
+  --text-light: #94A3B8;
+
+  /* Status Colors */
+  --status-open-bg: #EFF6FF;
+  --status-open-text: #1D4ED8;
+  --status-open-border: #BFDBFE;
+  --status-open-dot: #3B82F6;
+
+  --status-review-bg: #FFFBEB;
+  --status-review-text: #B45309;
+  --status-review-border: #FDE68A;
+  --status-review-dot: #F59E0B;
+
+  --status-closed-bg: #ECFDF5;
+  --status-closed-text: #047857;
+  --status-closed-border: #A7F3D0;
+  --status-closed-dot: #10B981;
+
+  --status-na-bg: #F8FAFC;
+  --status-na-text: #64748B;
+  --status-na-border: #E2E8F0;
+  --status-na-dot: #94A3B8;
+
+  /* Typography */
+  --font-heading: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--surface-bg);
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: var(--font-heading);
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+.mono-font {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.fs-xs { font-size: 0.75rem; }
+.fs-xxs { font-size: 0.68rem; }
+
+/* Elegant Glassmorphic Cards (3D Depth) */
+.card-executive {
+  background: var(--surface-card);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 4px -1px rgba(15, 23, 42, 0.02);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-executive:hover {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(203, 213, 225, 0.95);
+  box-shadow: 0 10px 25px -4px rgba(15, 23, 42, 0.07), 0 4px 8px -2px rgba(15, 23, 42, 0.03);
+}
+
+/* Glass Header & Footer */
+header.sticky-top {
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+
+footer {
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+
+/* Status Pills */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.status-pill .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-pill.status-abierto {
+  background-color: var(--status-open-bg);
+  color: var(--status-open-text);
+  border: 1px solid var(--status-open-border);
+}
+.status-pill.status-abierto .dot { background-color: var(--status-open-dot); }
+
+.status-pill.status-revisar {
+  background-color: var(--status-review-bg);
+  color: var(--status-review-text);
+  border: 1px solid var(--status-review-border);
+}
+.status-pill.status-revisar .dot {
+  background-color: var(--status-review-dot);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
+}
+
+.status-pill.status-cerrado {
+  background-color: var(--status-closed-bg);
+  color: var(--status-closed-text);
+  border: 1px solid var(--status-closed-border);
+}
+.status-pill.status-cerrado .dot { background-color: var(--status-closed-dot); }
+
+.status-pill.status-na {
+  background-color: var(--status-na-bg);
+  color: var(--status-na-text);
+  border: 1px solid var(--status-na-border);
+}
+.status-pill.status-na .dot { background-color: var(--status-na-dot); }
+
+/* Table Design */
+.table-arlogs {
+  font-size: 0.8125rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+.table-arlogs thead th {
+  background-color: rgba(248, 250, 252, 0.85);
+  backdrop-filter: blur(8px);
+  color: #475569;
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color);
+  border-top: none;
+  white-space: nowrap;
+}
+
+.table-arlogs tbody td {
+  padding: 11px 14px;
+  vertical-align: middle;
+  border-bottom: 1px solid rgba(241, 245, 249, 0.8);
+  color: #1E293B;
+}
+
+.table-arlogs tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.table-arlogs tbody tr:hover {
+  background-color: rgba(248, 250, 252, 0.8);
+}
+
+.table-arlogs tbody tr.row-alert {
+  background-color: rgba(255, 251, 235, 0.7);
+}
+
+.table-arlogs tbody tr.row-alert:hover {
+  background-color: rgba(254, 243, 199, 0.8);
+}
+
+/* Modern Buttons */
+.btn-brand-primary {
+  background-color: var(--brand-navy);
+  color: #FFFFFF;
+  border: 1px solid var(--brand-navy);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  padding: 7px 14px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-brand-primary:hover {
+  background-color: #1E293B;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+}
+
+.btn-brand-outline {
+  background-color: rgba(255, 255, 255, 0.9);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  font-weight: 500;
+  font-size: 0.8125rem;
+  padding: 7px 14px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-brand-outline:hover {
+  background-color: #F8FAFC;
+  border-color: #CBD5E1;
+  color: var(--brand-blue);
+}
+
+/* Clean Custom Form Inputs */
+.form-control, .form-select {
+  border-color: var(--border-color);
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  padding: 7px 12px;
+  background-color: rgba(255, 255, 255, 0.9);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  background-color: #FFFFFF;
+}
+
+/* Modern 3D Canvas Box */
+.canvas-3d-box {
+  position: relative;
+  width: 100%;
+  height: clamp(210px, 34vw, 270px);
+  border-radius: 12px;
+  overflow: hidden;
+  background: radial-gradient(circle at 65% 40%, #1e293b 0%, #090e17 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.table-responsive {
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 575.98px) {
+  .card-executive {
+    border-radius: 10px;
+  }
+  .table-arlogs thead th {
+    padding: 8px 10px;
+    font-size: 0.68rem;
+  }
+  .table-arlogs tbody td {
+    padding: 9px 10px;
+    font-size: 0.76rem;
+  }
+  .btn-brand-primary,
+  .btn-brand-outline {
+    padding: 6px 11px;
+    font-size: 0.78rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

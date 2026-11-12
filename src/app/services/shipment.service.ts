@@ -1,0 +1,672 @@
+import { Injectable, signal, computed, inject } from '@angular/core';
+import { ShipmentJob, Quotation, RoleUser, DEMO_USERS, UserRole, ServiceType, ServicePrefix } from '../models/shipment.model';
+import { INITIAL_MOCK_JOBS } from '../models/mock-data';
+import { AuditService } from './audit.service';
+import * as XLSX from 'xlsx';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ShipmentService {
+  private auditService = inject(AuditService);
+  // Current simulated date as per requirements: 11 Nov 2026
+  readonly referenceDate = new Date('2026-11-11T00:00:00');
+
+  // Reactive state signals
+  readonly jobs = signal<ShipmentJob[]>([]);
+  readonly quotations = signal<Quotation[]>([]);
+  readonly currentUser = signal<RoleUser>(DEMO_USERS[0]); // Overwritten upon login
+  readonly alertThresholdDays = signal<number>(15); // Default 15 days, editable by Gerencia / Admin
+
+  constructor() {
+    this.initData();
+  }
+
+  private initData(): void {
+    // Recalculate all 21 initial mock jobs with our business rules engine
+    const computedJobs = INITIAL_MOCK_JOBS.map(job => this.calculateJobMetrics(job, this.alertThresholdDays()));
+    this.jobs.set(computedJobs);
+
+    // Initial mock quotations in Pricing
+    const initialQuotes: Quotation[] = [
+      {
+        id: 'QR-022-26',
+        clienteId: 'CLI-001',
+        cliente: 'Industrias Andinas DEMO S.A.',
+        servicio: 'AEREO',
+        serviceCode: 'A',
+        shipper: 'Siemens Healthineers AG',
+        paisOrigen: 'ALEMANIA',
+        puertoEmbarque: 'MUNICH',
+        incoterm: 'FCA',
+        ordenesCompra: ['OC-1008', 'OC-1009'],
+        aduanaPorArlogs: 'SI',
+        fechaCotizacion: '2026-11-09',
+        estado: 'PENDIENTE'
+      },
+      {
+        id: 'QR-023-26',
+        clienteId: 'CLI-002',
+        cliente: 'Comercial Pacífico DEMO Cía. Ltda.',
+        servicio: 'FCL',
+        serviceCode: 'F',
+        shipper: 'Sany Heavy Machinery Co.',
+        paisOrigen: 'CHINA',
+        puertoEmbarque: 'NINGBO',
+        incoterm: 'FOB',
+        ordenesCompra: ['OC-2009'],
+        aduanaPorArlogs: 'SI',
+        fechaCotizacion: '2026-11-10',
+        estado: 'PENDIENTE'
+      }
+    ];
+    this.quotations.set(initialQuotes);
+  }
+
+  // Set user directly (used by AuthService)
+  setCurrentUser(user: RoleUser): void {
+    this.currentUser.set(user);
+  }
+
+  // Set user role
+  setUserRole(role: UserRole): void {
+    const user = DEMO_USERS.find(u => u.role === role);
+    if (user) {
+      this.currentUser.set(user);
+    }
+  }
+
+  // Update Gerencia Alert Threshold
+  setAlertThreshold(days: number): void {
+    const user = this.currentUser();
+    const role = user.role;
+    if (role !== 'gerencia' && role !== 'admin') {
+      throw new Error('Solo el perfil de Gerencia o Administrador puede modificar el umbral de alerta.');
+    }
+    const prev = this.alertThresholdDays();
+    this.alertThresholdDays.set(days);
+    // Recalculate all jobs with new threshold
+    this.jobs.update(list => list.map(job => this.calculateJobMetrics(job, days)));
+
+    if (prev !== days) {
+      this.auditService.record({
+        usuario: user.nombre,
+        email: user.email,
+        rol: user.role,
+        categoria: 'GERENCIA_SLA',
+        entidad: 'SLA_UMBRAL',
+        accion: 'Cambio de Umbral de Alerta',
+        detalle: `Límite días abiertos: ${prev}d -> ${days}d`
+      });
+    }
+  }
+
+  // Applicable milestones check
+  isMilestoneApplicable(service: ServiceType, aduanaPorArlogs: 'SI' | 'NO' | 'N/A', milestoneNum: number): boolean {
+    if (service === 'INLAND') {
+      return milestoneNum === 1;
+    }
+    if (service === 'CUSTOMS') {
+      return [1, 5, 7, 8, 9, 10].includes(milestoneNum);
+    }
+    if (service === 'COURIER') {
+      return [1, 5, 6, 7, 8, 9, 10].includes(milestoneNum);
+    }
+    // AEREO, FCL, LCL
+    if (aduanaPorArlogs === 'NO') {
+      return milestoneNum >= 1 && milestoneNum <= 6;
+    }
+    return milestoneNum >= 1 && milestoneNum <= 10;
+  }
+
+  // Final milestone that determines closure
+  getFinalMilestoneNum(service: ServiceType, aduanaPorArlogs: 'SI' | 'NO' | 'N/A'): number {
+    if (service === 'INLAND') return 0; // Inland has no closure / duration
+    if (aduanaPorArlogs === 'NO' && ['AEREO', 'FCL', 'LCL'].includes(service)) {
+      return 6; // Closed when H6 is registered
+    }
+    return 10; // Closed when H10 is registered
+  }
+
+  // Difference in calendar days between two ISO date strings (date2 - date1)
+  calculateCalendarDays(date1Str: string | null | undefined, date2Str: string | null | undefined): number | 'N/A' {
+    if (!date1Str || !date2Str) return 'N/A';
+    const d1 = new Date(date1Str + 'T00:00:00');
+    const d2 = new Date(date2Str + 'T00:00:00');
+    if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return 'N/A';
+    const diffTime = d2.getTime() - d1.getTime();
+    return Math.round(diffTime / (1000 * 60 * 60 * 24));
+  }
+
+  // Comprehensive calculation engine according to Table of Formulas
+  calculateJobMetrics(job: ShipmentJob, threshold: number): ShipmentJob {
+    const updated = { ...job };
+    const s = job.servicio;
+    const aduana = job.aduanaPorArlogs;
+
+    // 1. Respuesta shipper (H2 - H1)
+    if (this.isMilestoneApplicable(s, aduana, 2) && job.h1_asignacion && job.h2_respuestaShipper) {
+      updated.diasRespuestaShipper = this.calculateCalendarDays(job.h1_asignacion, job.h2_respuestaShipper);
+    } else {
+      updated.diasRespuestaShipper = 'N/A';
+    }
+
+    // 2. Alistamiento (H3 - H1)
+    if (this.isMilestoneApplicable(s, aduana, 3) && job.h1_asignacion && job.h3_cargaLista) {
+      updated.diasAlistamiento = this.calculateCalendarDays(job.h1_asignacion, job.h3_cargaLista);
+    } else {
+      updated.diasAlistamiento = 'N/A';
+    }
+
+    // 3. Coordinación real de origen (H4 - H1)
+    if (this.isMilestoneApplicable(s, aduana, 4) && job.h1_asignacion && job.h4_zarpeAtd) {
+      updated.diasCoordinacionOrigen = this.calculateCalendarDays(job.h1_asignacion, job.h4_zarpeAtd);
+    } else {
+      updated.diasCoordinacionOrigen = 'N/A';
+    }
+
+    // 4. Tránsito (H5 - H4)
+    if (this.isMilestoneApplicable(s, aduana, 4) && this.isMilestoneApplicable(s, aduana, 5) && job.h4_zarpeAtd && job.h5_arriboAta) {
+      updated.diasTransito = this.calculateCalendarDays(job.h4_zarpeAtd, job.h5_arriboAta);
+    } else {
+      updated.diasTransito = 'N/A';
+    }
+
+    // 5. Gestión sin aduana (H6 - H1)
+    if (aduana === 'NO' && ['AEREO', 'FCL', 'LCL'].includes(s) && job.h1_asignacion && job.h6_pesoRecibido) {
+      updated.diasGestionSinAduana = this.calculateCalendarDays(job.h1_asignacion, job.h6_pesoRecibido);
+    } else {
+      updated.diasGestionSinAduana = 'N/A';
+    }
+
+    // 6. Arribo a declaración (H7 - H5)
+    if (this.isMilestoneApplicable(s, aduana, 7) && job.h5_arriboAta && job.h7_declaracion) {
+      updated.diasArriboDeclaracion = this.calculateCalendarDays(job.h5_arriboAta, job.h7_declaracion);
+    } else {
+      updated.diasArriboDeclaracion = 'N/A';
+    }
+
+    // 7. Declaración a pago (H8 - H7)
+    if (this.isMilestoneApplicable(s, aduana, 8) && job.h7_declaracion && job.h8_pagoLiquidacion) {
+      updated.diasDeclaracionPago = this.calculateCalendarDays(job.h7_declaracion, job.h8_pagoLiquidacion);
+    } else {
+      updated.diasDeclaracionPago = 'N/A';
+    }
+
+    // 8. Pago a informe (H10 - H8)
+    if (this.isMilestoneApplicable(s, aduana, 10) && job.h8_pagoLiquidacion && job.h10_informeSalida) {
+      updated.diasPagoInforme = this.calculateCalendarDays(job.h8_pagoLiquidacion, job.h10_informeSalida);
+    } else {
+      updated.diasPagoInforme = 'N/A';
+    }
+
+    // 9. Días en aduana (H9 - H7)
+    if (this.isMilestoneApplicable(s, aduana, 9) && job.h7_declaracion && job.h9_salidaAutorizada) {
+      updated.diasEnAduana = this.calculateCalendarDays(job.h7_declaracion, job.h9_salidaAutorizada);
+    } else {
+      updated.diasEnAduana = 'N/A';
+    }
+
+    // 10. Ciclo total estrictamente H10 - H1 (N/A si no aplica aduana H10)
+    if (this.isMilestoneApplicable(s, aduana, 10) && job.h1_asignacion && job.h10_informeSalida) {
+      updated.diasCicloTotal = this.calculateCalendarDays(job.h1_asignacion, job.h10_informeSalida);
+    } else {
+      updated.diasCicloTotal = 'N/A';
+    }
+
+    // 11. Diferencia de peso %
+    if (job.pesoOrigen && job.pesoOrigen > 0 && job.pesoRecibido !== null && job.pesoRecibido !== undefined) {
+      const diffPct = ((job.pesoRecibido - job.pesoOrigen) / job.pesoOrigen) * 100;
+      updated.diferenciaPesoPct = (diffPct > 0 ? '+' : '') + diffPct.toFixed(1) + '%';
+    } else {
+      updated.diferenciaPesoPct = 'N/A';
+    }
+
+    // 12. Estado y Días Abiertos
+    if (s === 'INLAND') {
+      updated.estado = 'N/A';
+      updated.diasAbiertos = 'N/A';
+      updated.alertaDemora = false;
+      return updated;
+    }
+
+    // Closure check
+    let isClosed = false;
+    if (aduana === 'NO' && ['AEREO', 'FCL', 'LCL'].includes(s)) {
+      isClosed = !!job.h6_pesoRecibido;
+    } else {
+      isClosed = !!job.h10_informeSalida;
+    }
+
+    if (isClosed) {
+      updated.estado = 'CERRADO';
+      updated.diasAbiertos = 'N/A';
+      updated.alertaDemora = false;
+    } else {
+      // Calculate open days (referenceDate - H1)
+      if (job.h1_asignacion) {
+        const d1 = new Date(job.h1_asignacion + 'T00:00:00');
+        const diffDays = Math.round((this.referenceDate.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+        updated.diasAbiertos = diffDays >= 0 ? diffDays : 0;
+        
+        // Strict threshold check: > threshold means REVISAR
+        if (updated.diasAbiertos > threshold) {
+          updated.estado = 'REVISAR';
+          updated.alertaDemora = true;
+        } else {
+          updated.estado = 'ABIERTO';
+          updated.alertaDemora = false;
+        }
+      } else {
+        updated.diasAbiertos = 'N/A';
+        updated.estado = 'ABIERTO';
+        updated.alertaDemora = false;
+      }
+    }
+
+    return updated;
+  }
+
+  // Filtered jobs accessible by current user role (simulating backend security isolation)
+  readonly authorizedJobs = computed(() => {
+    const user = this.currentUser();
+    const all = this.jobs();
+
+    if (user.role === 'cliente_a' || user.role === 'cliente_b') {
+      const targetClientId = user.clienteId || (user.role === 'cliente_a' ? 'CLI-001' : 'CLI-002');
+      return all.filter(j => j.clienteId === targetClientId);
+    }
+    // Admin, Pricing, Operaciones, Gerencia see all jobs
+    return all;
+  });
+
+  // Strict adversarial test check: Attempt to fetch a single job by Ref
+  getJobByRef(refArlogs: string): ShipmentJob | null {
+    const user = this.currentUser();
+    const job = this.jobs().find(j => j.refArlogs.toLowerCase() === refArlogs.toLowerCase());
+    if (!job) return null;
+
+    // Strict client-level data isolation
+    if (user.role === 'cliente_a' || user.role === 'cliente_b') {
+      const targetClientId = user.clienteId || (user.role === 'cliente_a' ? 'CLI-001' : 'CLI-002');
+      if (job.clienteId !== targetClientId) {
+        console.warn(`[SECURITY VIOLATION BLOCKED] ${user.role} attempted access to reference ${refArlogs} belonging to ${job.cliente}`);
+        return null; // Server returns 403 / 404 forbidden
+      }
+    }
+    return job;
+  }
+
+  // Update milestone dates & weights (Operaciones / Gerencia / Admin)
+  updateJobMilestones(refArlogs: string, changes: Partial<ShipmentJob>): ShipmentJob {
+    const user = this.currentUser();
+    if (user.role !== 'operaciones' && user.role !== 'gerencia' && user.role !== 'admin') {
+      throw new Error('Solo el perfil de Operaciones puede registrar fechas e hitos.');
+    }
+
+    let updatedJob: ShipmentJob | null = null;
+    const diffs: string[] = [];
+
+    this.jobs.update(list => {
+      return list.map(item => {
+        if (item.refArlogs === refArlogs) {
+          (Object.keys(changes) as (keyof ShipmentJob)[]).forEach(k => {
+            const oldVal = item[k] ?? 'vacío';
+            const newVal = changes[k] ?? 'vacío';
+            if (oldVal !== newVal) {
+              diffs.push(`${String(k)}: ${oldVal} -> ${newVal}`);
+            }
+          });
+          const merged = { ...item, ...changes };
+          updatedJob = this.calculateJobMetrics(merged, this.alertThresholdDays());
+          return updatedJob;
+        }
+        return item;
+      });
+    });
+
+    if (!updatedJob) throw new Error(`Trabajo ${refArlogs} no encontrado.`);
+
+    if (diffs.length > 0) {
+      this.auditService.record({
+        usuario: user.nombre,
+        email: user.email,
+        rol: user.role,
+        categoria: 'OPERACION_HITOS',
+        entidad: refArlogs,
+        accion: 'Modificación Operativa / Hitos',
+        detalle: diffs.slice(0, 4).join(' | ') + (diffs.length > 4 ? ` (+${diffs.length - 4} más)` : '')
+      });
+    }
+
+    return updatedJob;
+  }
+
+  // Create Quotation (Pricing / Gerencia / Admin)
+  createQuotation(data: Omit<Quotation, 'id' | 'estado'>): Quotation {
+    const role = this.currentUser().role;
+    if (role !== 'pricing' && role !== 'gerencia' && role !== 'admin') {
+      throw new Error('Solo Pricing puede crear cotizaciones.');
+    }
+
+    // Sequence format QR-XXX-26
+    const count = this.quotations().length + 22; // next available sequence
+    const qrId = `QR-${count.toString().padStart(3, '0')}-26`;
+
+    // Check duplicate
+    if (this.quotations().some(q => q.id === qrId)) {
+      throw new Error(`El código ${qrId} ya existe. Evitando duplicidad.`);
+    }
+
+    const newQuote: Quotation = {
+      ...data,
+      id: qrId,
+      estado: 'PENDIENTE'
+    };
+
+    this.quotations.update(list => [newQuote, ...list]);
+    const user = this.currentUser();
+    this.auditService.record({
+      usuario: user.nombre,
+      email: user.email,
+      rol: user.role,
+      categoria: 'PRICING_QR',
+      entidad: qrId,
+      accion: 'Nueva Cotización QR',
+      detalle: `Cliente: ${data.cliente} | ${data.servicio} | OC: ${data.ordenesCompra.join(', ')}`
+    });
+    return newQuote;
+  }
+
+  // Approve Quotation (Pricing / Gerencia / Admin) -> Automatically creates unique ARLOGS Reference
+  approveQuotation(quotationId: string): ShipmentJob {
+    const role = this.currentUser().role;
+    if (role !== 'pricing' && role !== 'gerencia' && role !== 'admin') {
+      throw new Error('Solo Pricing puede aprobar cotizaciones.');
+    }
+
+    const quote = this.quotations().find(q => q.id === quotationId);
+    if (!quote) throw new Error('Cotización no encontrada.');
+    if (quote.estado === 'APROBADA') {
+      throw new Error('Esta cotización ya fue aprobada y tiene una referencia activa.');
+    }
+
+    // Determine prefix and sequential number
+    const prefix = quote.serviceCode;
+    const samePrefixJobs = this.jobs().filter(j => j.serviceCode === prefix);
+    const nextSeq = 900 + samePrefixJobs.length + 1;
+    const newRef = `${prefix}${nextSeq}-2026`;
+
+    // Create the operational shipment job transferring data seamlessly
+    const newJob: ShipmentJob = {
+      refArlogs: newRef,
+      qrCode: quote.id,
+      cliente: quote.cliente,
+      clienteId: quote.clienteId,
+      servicio: quote.servicio,
+      serviceCode: quote.serviceCode,
+      aduanaPorArlogs: quote.aduanaPorArlogs,
+      shipper: quote.shipper,
+      paisOrigen: quote.paisOrigen,
+      puertoEmbarque: quote.puertoEmbarque,
+      incoterm: quote.incoterm,
+      ordenesCompra: quote.ordenesCompra,
+      guiaMaster: 'PENDIENTE',
+      hawbHbl: 'PENDIENTE',
+      contenedor: quote.servicio === 'FCL' ? 'PENDIENTE' : 'N/A',
+      pesoOrigen: 150,
+      pesoRecibido: null,
+      h1_asignacion: this.referenceDate.toISOString().split('T')[0], // Started today
+      h2_respuestaShipper: null,
+      h3_cargaLista: null,
+      h4_zarpeAtd: null,
+      h5_arriboAta: null,
+      h6_pesoRecibido: null,
+      h7_declaracion: null,
+      h8_pagoLiquidacion: null,
+      h9_salidaAutorizada: null,
+      h10_informeSalida: null,
+      responsablePago: 'CLIENTE',
+      regimenAduana: quote.aduanaPorArlogs === 'SI' ? 'Régimen 10 (Consumo)' : 'N/A',
+      distritoAduana: quote.servicio === 'AEREO' ? 'Guayaquil Aéreo' : 'Guayaquil Marítimo',
+      aforoAduana: 'Documental'
+    };
+
+    const calculatedJob = this.calculateJobMetrics(newJob, this.alertThresholdDays());
+
+    // Update quote
+    this.quotations.update(list => list.map(q => q.id === quotationId ? { ...q, estado: 'APROBADA', refArlogsGenerada: newRef } : q));
+    // Add job to operations pool
+    this.jobs.update(list => [calculatedJob, ...list]);
+
+    const user = this.currentUser();
+    this.auditService.record({
+      usuario: user.nombre,
+      email: user.email,
+      rol: user.role,
+      categoria: 'PRICING_QR',
+      entidad: newRef,
+      accion: 'Aprobación de Cotización',
+      detalle: `${quotationId} aprobada -> Referencia ${newRef} transferida a Operaciones`
+    });
+
+    return calculatedJob;
+  }
+
+  // Update Pending Quotation (Pricing / Gerencia / Admin)
+  updateQuotation(
+    quotationId: string,
+    patch: Partial<Omit<Quotation, 'id' | 'estado' | 'refArlogsGenerada'>>
+  ): Quotation {
+    const user = this.currentUser();
+    if (user.role !== 'pricing' && user.role !== 'gerencia' && user.role !== 'admin') {
+      throw new Error('No tiene permisos para editar cotizaciones.');
+    }
+    const existing = this.quotations().find(q => q.id === quotationId);
+    if (!existing) throw new Error('Cotización no encontrada.');
+    if (existing.estado === 'APROBADA') {
+      throw new Error('Una cotización aprobada no puede editarse.');
+    }
+
+    let updated!: Quotation;
+    this.quotations.update(list =>
+      list.map(q => {
+        if (q.id === quotationId) {
+          updated = { ...q, ...patch };
+          return updated;
+        }
+        return q;
+      })
+    );
+
+    this.auditService.record({
+      usuario: user.nombre,
+      email: user.email,
+      rol: user.role,
+      categoria: 'PRICING_QR',
+      entidad: quotationId,
+      accion: 'Edición de Cotización QR',
+      detalle: `Cliente: ${updated.cliente} | ${updated.servicio} | Origen: ${updated.puertoEmbarque}`
+    });
+    return updated;
+  }
+
+  // Delete Pending Quotation (Pricing / Gerencia / Admin)
+  deleteQuotation(quotationId: string): void {
+    const user = this.currentUser();
+    if (user.role !== 'pricing' && user.role !== 'gerencia' && user.role !== 'admin') {
+      throw new Error('No tiene permisos para eliminar cotizaciones.');
+    }
+    const existing = this.quotations().find(q => q.id === quotationId);
+    if (!existing) throw new Error('Cotización no encontrada.');
+    if (existing.estado === 'APROBADA') {
+      throw new Error('No se puede eliminar una cotización ya aprobada con referencia operativa.');
+    }
+
+    this.quotations.update(list => list.filter(q => q.id !== quotationId));
+    this.auditService.record({
+      usuario: user.nombre,
+      email: user.email,
+      rol: user.role,
+      categoria: 'PRICING_QR',
+      entidad: quotationId,
+      accion: 'Eliminación de Cotización QR',
+      detalle: `Cotización de ${existing.cliente} (${existing.servicio}) removida de bandeja`
+    });
+  }
+
+  // Create Direct Operational Shipment (Operaciones / Gerencia / Admin)
+  createDirectShipment(data: {
+    clienteId: string;
+    cliente: string;
+    servicio: ServiceType;
+    serviceCode: ServicePrefix;
+    aduanaPorArlogs: 'SI' | 'NO' | 'N/A';
+    shipper: string;
+    paisOrigen: string;
+    puertoEmbarque: string;
+    incoterm: string;
+    ordenesCompra: string[];
+    guiaMaster?: string;
+    contenedor?: string;
+    pesoOrigen?: number;
+  }): ShipmentJob {
+    const user = this.currentUser();
+    if (user.role !== 'operaciones' && user.role !== 'gerencia' && user.role !== 'admin') {
+      throw new Error('Solo Operaciones, Gerencia o Administración pueden crear embarques.');
+    }
+
+    const prefix = data.serviceCode;
+    const samePrefixJobs = this.jobs().filter(j => j.serviceCode === prefix);
+    const nextSeq = 900 + samePrefixJobs.length + 1;
+    const newRef = `${prefix}${nextSeq}-2026`;
+
+    const newJob: ShipmentJob = {
+      refArlogs: newRef,
+      qrCode: 'DIRECTO',
+      cliente: data.cliente,
+      clienteId: data.clienteId,
+      servicio: data.servicio,
+      serviceCode: prefix,
+      aduanaPorArlogs: data.aduanaPorArlogs,
+      shipper: data.shipper.trim(),
+      paisOrigen: data.paisOrigen.trim().toUpperCase(),
+      puertoEmbarque: data.puertoEmbarque.trim().toUpperCase(),
+      incoterm: data.incoterm,
+      ordenesCompra: data.ordenesCompra,
+      guiaMaster: data.guiaMaster?.trim() || 'PENDIENTE',
+      hawbHbl: 'PENDIENTE',
+      contenedor: data.servicio === 'FCL' ? (data.contenedor?.trim() || 'PENDIENTE') : 'N/A',
+      pesoOrigen: Number(data.pesoOrigen) > 0 ? Number(data.pesoOrigen) : 180,
+      pesoRecibido: null,
+      h1_asignacion: this.referenceDate.toISOString().split('T')[0],
+      h2_respuestaShipper: null,
+      h3_cargaLista: null,
+      h4_zarpeAtd: null,
+      h5_arriboAta: null,
+      h6_pesoRecibido: null,
+      h7_declaracion: null,
+      h8_pagoLiquidacion: null,
+      h9_salidaAutorizada: null,
+      h10_informeSalida: null,
+      responsablePago: 'CLIENTE',
+      regimenAduana: data.aduanaPorArlogs === 'SI' ? 'Régimen 10 (Consumo)' : 'N/A',
+      distritoAduana: data.servicio === 'AEREO' ? 'Guayaquil Aéreo' : 'Guayaquil Marítimo',
+      aforoAduana: 'Documental'
+    };
+
+    const calculated = this.calculateJobMetrics(newJob, this.alertThresholdDays());
+    this.jobs.update(list => [calculated, ...list]);
+
+    this.auditService.record({
+      usuario: user.nombre,
+      email: user.email,
+      rol: user.role,
+      categoria: 'OPERACION_HITOS',
+      entidad: newRef,
+      accion: 'Alta de Embarque Operativo',
+      detalle: `Cliente: ${data.cliente} | ${data.servicio} | OC: ${data.ordenesCompra.join(', ')}`
+    });
+    return calculated;
+  }
+
+  // Delete Operational Shipment (Operaciones / Gerencia / Admin)
+  deleteShipment(refArlogs: string): void {
+    const user = this.currentUser();
+    if (user.role !== 'operaciones' && user.role !== 'gerencia' && user.role !== 'admin') {
+      throw new Error('No tiene permisos para eliminar embarques.');
+    }
+    const existing = this.jobs().find(j => j.refArlogs === refArlogs);
+    if (!existing) throw new Error(`Embarque ${refArlogs} no encontrado.`);
+
+    this.jobs.update(list => list.filter(j => j.refArlogs !== refArlogs));
+    this.auditService.record({
+      usuario: user.nombre,
+      email: user.email,
+      rol: user.role,
+      categoria: 'OPERACION_HITOS',
+      entidad: refArlogs,
+      accion: 'Eliminación de Embarque',
+      detalle: `Referencia ${refArlogs} (${existing.cliente}) eliminada del seguimiento`
+    });
+  }
+
+  // Excel Export
+  exportToExcel(filteredJobs: ShipmentJob[]): void {
+    const user = this.currentUser();
+    const rows = filteredJobs.map(j => {
+      const base: Record<string, any> = {
+        'Ref ARLOGS': j.refArlogs,
+        'QR Cotización': j.qrCode,
+        'Modalidad': j.servicio,
+        'Estado': j.estado,
+        'Días Abiertos': j.diasAbiertos,
+        'Shipper': j.shipper,
+        'País Origen': j.paisOrigen,
+        'Puerto': j.puertoEmbarque,
+        'Incoterm': j.incoterm,
+        'Órdenes de Compra': j.ordenesCompra.join(', '),
+        'Guía Máster / BL': j.guiaMaster,
+        'HAWB / HBL': j.hawbHbl,
+        'Contenedor': j.contenedor,
+        'Peso Origen (kg)': j.pesoOrigen ?? 'N/A',
+        'Peso Recibido (kg)': j.pesoRecibido ?? 'N/A',
+        'Dif. Peso %': j.diferenciaPesoPct,
+        'H1 Asignación': j.h1_asignacion ?? 'N/A',
+        'H2 Resp. Shipper': j.h2_respuestaShipper ?? 'N/A',
+        'H3 Carga Lista': j.h3_cargaLista ?? 'N/A',
+        'H4 Zarpe ATD': j.h4_zarpeAtd ?? 'N/A',
+        'H5 Arribo ATA': j.h5_arriboAta ?? 'N/A',
+        'H6 Peso Recibido': j.h6_pesoRecibido ?? 'N/A',
+        'H7 Declaración': j.h7_declaracion ?? 'N/A',
+        'H8 Pago': j.h8_pagoLiquidacion ?? 'N/A',
+        'H9 Salida Autorizada': j.h9_salidaAutorizada ?? 'N/A',
+        'H10 Informe Salida': j.h10_informeSalida ?? 'N/A',
+        'Resp. Shipper (2-1)': j.diasRespuestaShipper,
+        'Alistamiento (3-1)': j.diasAlistamiento,
+        'Coordinación Origen (4-1)': j.diasCoordinacionOrigen,
+        'Tránsito (5-4)': j.diasTransito,
+        'Gestión Sin Aduana (6-1)': j.diasGestionSinAduana,
+        'Arribo a Decl. (7-5)': j.diasArriboDeclaracion,
+        'Decl. a Pago (8-7)': j.diasDeclaracionPago,
+        'Pago a Inf. (10-8)': j.diasPagoInforme,
+        'Días en Aduana (9-7)': j.diasEnAduana,
+        'Ciclo Total (10-1)': j.diasCicloTotal
+      };
+
+      // Only internal profiles see client name
+      if (user.role !== 'cliente_a' && user.role !== 'cliente_b') {
+        base['Cliente'] = j.cliente;
+      }
+      return base;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Embarques ARLOGS');
+
+    const fileName = `ARLOGS_Embarques_${user.role}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  }
+}
+
